@@ -56,6 +56,31 @@ export interface POSMachine {
   channels?: Channel[];
 }
 
+export interface InstallmentPeriod {
+  period: number;
+  dueDate: string;
+  monthlyPayment: number;
+  principal: number;
+  interest: number;
+  remainingPrincipal: number;
+  status: 'pending' | 'paid' | 'overdue';
+}
+
+export interface InstallmentPlan {
+  id: string;
+  cardId: string;
+  startDate: string;
+  principal: number;
+  annualRate: number;
+  totalPeriods: number;
+  monthlyPayment: number;
+  periods: InstallmentPeriod[];
+  status: 'active' | 'settled';
+  settledDate?: string;
+  settledAmount?: number;
+  notes?: string;
+}
+
 export interface GlobalStats {
   totalAvailable: number;
   totalUnpaid: number;

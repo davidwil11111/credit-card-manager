@@ -52,11 +52,37 @@ export const posMachineSchema = z.object({
   channels: z.array(channelSchema).optional(),
 });
 
+export const installmentPeriodSchema = z.object({
+  period: z.number().int().min(1),
+  dueDate: z.string().min(1),
+  monthlyPayment: z.number().min(0),
+  principal: z.number().min(0),
+  interest: z.number().min(0),
+  remainingPrincipal: z.number().min(0),
+  status: z.enum(['pending', 'paid', 'overdue']),
+});
+
+export const installmentPlanSchema = z.object({
+  id: z.string().min(1),
+  cardId: z.string().min(1),
+  startDate: z.string().min(1),
+  principal: z.number().positive(),
+  annualRate: z.number().min(0).max(0.36),
+  totalPeriods: z.number().int().min(1).max(36),
+  monthlyPayment: z.number().min(0),
+  periods: z.array(installmentPeriodSchema),
+  status: z.enum(['active', 'settled']),
+  settledDate: z.string().optional(),
+  settledAmount: z.number().optional(),
+  notes: z.string().optional(),
+});
+
 export const importDataSchema = z.object({
   version: z.string().optional(),
   exportedAt: z.string().optional(),
   cards: z.array(creditCardSchema),
   posMachines: z.array(posMachineSchema),
+  installmentPlans: z.array(installmentPlanSchema).optional(),
 });
 
 export const creditCardFormSchema = z.object({

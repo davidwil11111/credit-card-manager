@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { CreditCard, GlobalStats, RepaymentStatus } from '../types';
-import { Trash2, CheckSquare, Square, X, Plus, Edit, Settings, PieChart } from 'lucide-react';
+import { Trash2, CheckSquare, Square, X, Plus, Edit, Settings, PieChart, DollarSign } from 'lucide-react';
 import { getBankTheme } from '../constants';
 import { formatRepaymentDate, calculateRemainingDays } from '../utils/date';
 import { formatCurrency } from '../utils/currency';
@@ -15,6 +15,7 @@ interface OverviewProps {
   onBatchDelete: (ids: string[]) => void;
   onOpenSettings?: () => void;
   onOpenAnalysis?: () => void;
+  onOpenFeeStats?: () => void;
 }
 
 export const Overview: React.FC<OverviewProps> = ({
@@ -24,7 +25,8 @@ export const Overview: React.FC<OverviewProps> = ({
     onDeleteCard,
     onBatchDelete,
     onOpenSettings,
-    onOpenAnalysis
+    onOpenAnalysis,
+    onOpenFeeStats
 }) => {
   const cards = useAppStore(state => state.cards);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -113,6 +115,7 @@ export const Overview: React.FC<OverviewProps> = ({
                  ) : (
                      <>
                         <button onClick={onOpenAnalysis} className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 active:scale-95 transition" title="账单分析"><PieChart size={20} /></button>
+                        <button onClick={onOpenFeeStats} className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 active:scale-95 transition" title="手续费统计"><DollarSign size={20} /></button>
                         <button onClick={onOpenSettings} className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 active:scale-95 transition" title="数据管理"><Settings size={20} /></button>
                          {cards.length > 0 && <button onClick={() => setIsSelectionMode(true)} className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 active:scale-95 transition"><Trash2 size={20} /></button>}
                          <button onClick={onAddCard} className="p-2 rounded-full bg-white text-blue-700 shadow-md hover:bg-blue-50 active:scale-95 transition"><Plus size={20} /></button>

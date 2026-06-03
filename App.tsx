@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Overview } from './components/Overview';
 import { Detail } from './components/Detail';
 import { Analysis } from './components/Analysis';
+import { FeeStatistics } from './components/FeeStatistics';
 import { CreditCardForm } from './components/CreditCardForm';
 import { TransactionForm } from './components/TransactionForm';
 import { SplashScreen } from './components/SplashScreen';
@@ -17,7 +18,7 @@ import { notifications } from './utils/notifications';
 import { Capacitor } from '@capacitor/core';
 
 const App: React.FC = () => {
-  const [view, setView] = useState<'overview' | 'detail' | 'form' | 'analysis'>('overview');
+  const [view, setView] = useState<'overview' | 'detail' | 'form' | 'analysis' | 'fee'>('overview');
   const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
@@ -115,6 +116,7 @@ const App: React.FC = () => {
   const handleSelectCard = (card: CreditCard) => { setSelectedCard(card); setView('detail'); };
   const handleBackToOverview = () => { setSelectedCard(null); setView('overview'); };
   const handleOpenAnalysis = () => { setView('analysis'); };
+  const handleOpenFeeStats = () => { setView('fee'); };
   const handleAddCard = () => { setEditingCard(null); setView('form'); };
   const handleEditCard = (card: CreditCard) => { setEditingCard(card); setView('form'); };
 
@@ -219,12 +221,30 @@ const App: React.FC = () => {
   };
 
   const handleExportData = async () => {
+    const fileName = `cc_manager_backup_${new Date().toISOString().split('T')[0]}`;
+    const jsonStr = await database.exportToJson();
+
     if (Capacitor.isNativePlatform()) {
-      await handleExportShare();
+      try {
+        const { Filesystem, Directory } = await import('@capacitor/filesystem');
+        const { Share } = await import('@capacitor/share');
+
+        const result = await Filesystem.writeFile({
+          path: fileName + '.json',
+          data: jsonStr,
+          directory: Directory.Cache,
+        });
+
+        await Share.share({
+          title: '信用卡管家备份数据',
+          text: '信用卡管家数据备份（含完整交易流水）',
+          url: result.uri,
+        });
+      } catch (error) {
+        logger.error('Export share failed:', error);
+        alert('导出失败，请重试');
+      }
     } else {
-      const fileName = `cc_manager_backup_${new Date().toISOString().split('T')[0]}`;
-      const jsonStr = await database.exportToJson();
-      
       const blob = new Blob([jsonStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -233,29 +253,6 @@ const App: React.FC = () => {
       document.body.appendChild(link);
       link.click();
       setTimeout(() => { document.body.removeChild(link); URL.revokeObjectURL(url); }, 200);
-    }
-  };
-
-  const handleExportShare = async () => {
-    try {
-      if (Capacitor.isNativePlatform()) {
-        const dbResult = await database.exportDatabase();
-        
-        if (dbResult) {
-          const { Share } = await import('@capacitor/share');
-          
-          await Share.share({
-            title: '信用卡管理备份数据',
-            text: '信用卡管理数据备份（JSON格式）',
-            url: dbResult.uri
-          });
-        } else {
-          alert('数据库导出失败，请重试');
-        }
-      }
-    } catch (error) {
-      logger.error('Export share failed:', error);
-      alert('导出失败，请重试');
     }
   };
 
@@ -278,10 +275,14 @@ const App: React.FC = () => {
           onBatchDelete={handleBatchDelete}
           onOpenSettings={() => setSettingsOpen(true)}
           onOpenAnalysis={handleOpenAnalysis}
+          onOpenFeeStats={handleOpenFeeStats}
         />
       )}
       {view === 'analysis' && (
         <Analysis onBack={handleBackToOverview} />
+      )}
+      {view === 'fee' && (
+        <FeeStatistics onBack={handleBackToOverview} />
       )}
       {view === 'detail' && selectedCard && (
         <Detail

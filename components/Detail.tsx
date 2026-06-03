@@ -1,10 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import { CreditCard, Transaction } from '../types';
-import { ArrowLeft, Edit, Wallet, PlusCircle, Sliders, ChevronDown, CreditCard as CardIcon, Trash2 } from 'lucide-react';
+import { CreditCard, Transaction, InstallmentPlan } from '../types';
+import { ArrowLeft, Edit, Wallet, PlusCircle, Sliders, ChevronDown, CreditCard as CardIcon, Trash2, Landmark } from 'lucide-react';
 import { generateBillingCycles, getBankTheme } from '../constants';
 import { formatDate } from '../utils/date';
 import { formatCurrency } from '../utils/currency';
 import { useAppStore } from '../store';
+import { InstallmentForm } from './InstallmentForm';
+import { InstallmentPlanView } from './InstallmentPlanView';
+import { EarlySettlementModal } from './EarlySettlementModal';
 
 interface DetailProps {
   onBack: () => void;
@@ -31,6 +34,8 @@ export const Detail: React.FC<DetailProps> = ({
   const [filterType, setFilterType] = useState<'all' | 'consumption' | 'repayment'>('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<'card' | 'transaction' | null>(null);
   const [pendingDeleteTxId, setPendingDeleteTxId] = useState<string | null>(null);
+  const [showInstallmentForm, setShowInstallmentForm] = useState(false);
+  const [settlementTarget, setSettlementTarget] = useState<InstallmentPlan | null>(null);
   
   // Generate Cycles (Memoized based on billDay)
   const rawCycles = useMemo(() => generateBillingCycles(card.billDay), [card.billDay]);
@@ -205,7 +210,7 @@ export const Detail: React.FC<DetailProps> = ({
          
          {/* 2. Quick Actions */}
          <div className="mx-4 -mt-2 bg-white rounded-xl shadow-lg shadow-gray-200/50 p-4 relative z-20 mb-4 animate-in slide-in-from-bottom-4 duration-500 delay-100">
-             <div className="grid grid-cols-3 gap-2 text-center">
+             <div className="grid grid-cols-4 gap-2 text-center">
                  <button onClick={() => onQuickAction('adjust_unpaid', card)} className="flex flex-col items-center gap-2 p-1 active:bg-gray-50 rounded-lg group">
                      <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-active:scale-90 transition"><Sliders size={18}/></div>
                      <span className="text-[10px] text-gray-600 font-medium">调剩余未还</span>
@@ -217,6 +222,10 @@ export const Detail: React.FC<DetailProps> = ({
                  <button onClick={() => onQuickAction('adjust_available', card)} className="flex flex-col items-center gap-2 p-1 active:bg-gray-50 rounded-lg group">
                      <div className="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center group-active:scale-90 transition"><Wallet size={18}/></div>
                      <span className="text-[10px] text-gray-600 font-medium">调可用额度</span>
+                 </button>
+                 <button onClick={() => setShowInstallmentForm(true)} className="flex flex-col items-center gap-2 p-1 active:bg-gray-50 rounded-lg group">
+                     <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center group-active:scale-90 transition"><Landmark size={18}/></div>
+                     <span className="text-[10px] text-gray-600 font-medium">分期管理</span>
                  </button>
              </div>
          </div>
@@ -233,7 +242,12 @@ export const Detail: React.FC<DetailProps> = ({
              </div>
          </div>
 
-         {/* 4. Transaction Records with Cycle Selector */}
+         {/* 4. Installment Plans */}
+         {<div className="mx-4 mb-4 animate-in slide-in-from-bottom-4 duration-500 delay-200">
+            <InstallmentPlanView cardId={card.id} onOpenSettlement={setSettlementTarget} />
+         </div>}
+
+         {/* 5. Transaction Records with Cycle Selector */}
          <div className="px-4 animate-in slide-in-from-bottom-4 duration-500 delay-200">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
@@ -374,6 +388,16 @@ export const Detail: React.FC<DetailProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Installment Form Modal */}
+      {showInstallmentForm && (
+        <InstallmentForm card={card} onClose={() => setShowInstallmentForm(false)} />
+      )}
+
+      {/* Early Settlement Modal */}
+      {settlementTarget && (
+        <EarlySettlementModal plan={settlementTarget} onClose={() => setSettlementTarget(null)} />
       )}
     </div>
   );

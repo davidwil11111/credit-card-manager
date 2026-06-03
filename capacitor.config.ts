@@ -1,8 +1,8 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.creditcard.manager',
-  appName: '信用卡管理',
+  appId: 'com.creditcard.steward',
+  appName: '信用卡管家',
   webDir: 'dist',
   android: {
     captureInput: true,
@@ -11,7 +11,7 @@ const config: CapacitorConfig = {
     backgroundColor: '#1d4ed8'
   },
   ios: {
-    scheme: 'creditcardmanager',
+    scheme: 'creditcardsteward',
     contentInset: 'always'
   },
   server: {

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { CreditCard, Transaction, POSMachine } from './types';
+import { CreditCard, Transaction, POSMachine, InstallmentPlan } from './types';
 import { calculateCardStatus, getStatementRange, getTxLastBillDate, calculateRepaymentDateForBill, DEFAULT_POS_MACHINES, generateMockCards, clampDayToMonth } from './constants';
+import { calculateInstallmentPlan, generateInstallmentTransactions, calculateEarlySettlement } from './utils/installment';
 import { database } from './utils/database';
 import { logger } from './utils/logger';
 import { notifications } from './utils/notifications';
@@ -8,6 +9,7 @@ import { notifications } from './utils/notifications';
 interface AppState {
   cards: CreditCard[];
   posMachines: POSMachine[];
+  installmentPlans: InstallmentPlan[];
   selectedCard: CreditCard | null;
   notificationEnabled: boolean;
 
@@ -21,11 +23,15 @@ interface AppState {
   processBillingLogic: () => Promise<void>;
   handleUpdatePOS: (machines: POSMachine[]) => Promise<void>;
   handleToggleNotification: (enabled: boolean) => void;
+  handleCreateInstallmentPlan: (cardId: string, principal: number, annualRate: number, totalPeriods: number, startDate: string, notes?: string) => Promise<void>;
+  handleSettleInstallmentPlan: (planId: string) => Promise<void>;
+  handleDeleteInstallmentPlan: (planId: string) => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
   cards: [],
   posMachines: [],
+  installmentPlans: [],
   selectedCard: null,
   notificationEnabled: false,
 
@@ -50,6 +56,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       const data = generateMockCards(2);
       set({ cards: data });
       await get().saveData(data);
+    }
+
+    const savedPlans = await database.getAllInstallmentPlans();
+    if (savedPlans && savedPlans.length > 0) {
+      set({ installmentPlans: savedPlans });
     }
 
     const config = notifications.getConfig();
@@ -206,5 +217,67 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (enabled) {
       notifications.checkAndNotify(get().cards);
     }
+  },
+
+  handleCreateInstallmentPlan: async (cardId, principal, annualRate, totalPeriods, startDate, notes) => {
+    const { cards } = get();
+    const card = cards.find(c => c.id === cardId);
+    if (!card) {
+      logger.error('Installment plan: card not found', cardId);
+      return;
+    }
+
+    const plan = calculateInstallmentPlan(principal, annualRate, totalPeriods, startDate, card.billDay, notes);
+    plan.cardId = cardId;
+
+    const txs = generateInstallmentTransactions(plan);
+    // Give each transaction a unique id by appending an index
+    txs.forEach((tx, i) => { tx.id = `${tx.id}_${i}`; });
+
+    const newCards = cards.map(c => {
+      if (c.id !== cardId) return c;
+      return { ...c, transactions: [...txs, ...c.transactions] };
+    });
+
+    await get().saveData(newCards);
+    await database.saveInstallmentPlan(plan);
+    set({ installmentPlans: [...get().installmentPlans, plan] });
+    logger.info('Installment plan created:', plan.id);
+  },
+
+  handleSettleInstallmentPlan: async (planId) => {
+    const { installmentPlans } = get();
+    const plan = installmentPlans.find(p => p.id === planId);
+    if (!plan) return;
+
+    const settlementDate = new Date().toISOString().split('T')[0];
+    const settlement = calculateEarlySettlement(plan, settlementDate);
+
+    const updatedPlan: InstallmentPlan = {
+      ...plan,
+      status: 'settled',
+      settledDate: settlementDate,
+      settledAmount: settlement.settlementAmount,
+      periods: plan.periods.map(p => ({
+        ...p,
+        status: p.status === 'pending' ? 'paid' : p.status,
+      })),
+    };
+
+    const newPlans = installmentPlans.map(p => p.id === planId ? updatedPlan : p);
+    await database.saveInstallmentPlans(newPlans);
+    set({ installmentPlans: newPlans });
+    logger.info('Installment plan settled:', planId);
+  },
+
+  handleDeleteInstallmentPlan: async (planId) => {
+    const { installmentPlans } = get();
+    const plan = installmentPlans.find(p => p.id === planId);
+    if (!plan) return;
+
+    const newPlans = installmentPlans.filter(p => p.id !== planId);
+    await database.saveInstallmentPlans(newPlans);
+    set({ installmentPlans: newPlans });
+    logger.info('Installment plan deleted:', planId);
   },
 }));

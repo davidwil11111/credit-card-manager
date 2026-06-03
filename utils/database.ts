@@ -1,8 +1,8 @@
 import { CapacitorSQLite } from '@capacitor-community/sqlite';
 import { Capacitor } from '@capacitor/core';
-import type { CreditCard, POSMachine } from '../types';
+import type { CreditCard, POSMachine, InstallmentPlan } from '../types';
 import { logger } from './logger';
-import { importDataSchema, creditCardSchema, posMachineSchema, safeParseJson } from './validation';
+import { importDataSchema, creditCardSchema, posMachineSchema, installmentPlanSchema, safeParseJson } from './validation';
 import { z } from 'zod';
 
 const DB_NAME = 'credit_card_manager';
@@ -36,11 +36,27 @@ interface StoredPOS {
   channels: string | null;
 }
 
+interface StoredInstallmentPlan {
+  id: string;
+  card_id: string;
+  start_date: string;
+  principal: number;
+  annual_rate: number;
+  total_periods: number;
+  monthly_payment: number;
+  periods: string;
+  status: string;
+  settled_date: string | null;
+  settled_amount: number | null;
+  notes: string | null;
+}
+
 interface AutoBackup {
   timestamp: string;
   data: {
     cards: CreditCard[];
     posMachines: POSMachine[];
+    installmentPlans: InstallmentPlan[];
     version: string;
     type: 'auto' | 'manual';
   };
@@ -48,6 +64,7 @@ interface AutoBackup {
 
 const LS_CARDS = `${DB_NAME}_cards`;
 const LS_POS = `${DB_NAME}_pos`;
+const LS_INSTALLMENT = `${DB_NAME}_installment_plans`;
 const LS_BACKUPS = `${DB_NAME}_backups`;
 
 class Database {
@@ -63,11 +80,12 @@ class Database {
 
     try {
       if (this.isNative) {
-        await CapacitorSQLite.initWebStore();
         await CapacitorSQLite.createConnection({ database: this.dbName });
         await CapacitorSQLite.open({ database: this.dbName });
         await this.createTables();
         await this.migrateIfNeeded();
+      } else {
+        await CapacitorSQLite.initWebStore();
       }
       this.loadAutoBackups();
       this.initialized = true;
@@ -114,6 +132,21 @@ class Database {
           timestamp TEXT NOT NULL,
           data TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS installment_plans (
+          id TEXT PRIMARY KEY,
+          card_id TEXT NOT NULL,
+          start_date TEXT NOT NULL,
+          principal REAL NOT NULL,
+          annual_rate REAL NOT NULL,
+          total_periods INTEGER NOT NULL,
+          monthly_payment REAL NOT NULL,
+          periods TEXT NOT NULL DEFAULT '[]',
+          status TEXT NOT NULL DEFAULT 'active',
+          settled_date TEXT,
+          settled_amount REAL,
+          notes TEXT
+        );
       `,
     });
   }
@@ -123,13 +156,13 @@ class Database {
 
     try {
       // Migration 1: Add channels column to pos_machines
-      const result = await CapacitorSQLite.query({
+      const mcResult = await CapacitorSQLite.query({
         database: this.dbName,
         statement: "PRAGMA table_info(pos_machines);",
         values: [],
       });
-      const columns = (result.values || []).map((r: any) => r.name);
-      if (!columns.includes('channels')) {
+      const mcColumns = (mcResult.values || []).map((r: any) => r.name);
+      if (!mcColumns.includes('channels')) {
         await CapacitorSQLite.execute({
           database: this.dbName,
           statements: 'ALTER TABLE pos_machines ADD COLUMN channels TEXT;',
@@ -137,7 +170,38 @@ class Database {
         logger.info('Migration: added channels column to pos_machines');
       }
     } catch (error) {
-      logger.error('Migration failed:', error);
+      logger.error('Migration pos_machines failed:', error);
+    }
+
+    try {
+      // Migration 2: Create installment_plans table if not exists
+      const ipResult = await CapacitorSQLite.query({
+        database: this.dbName,
+        statement: "SELECT name FROM sqlite_master WHERE type='table' AND name='installment_plans';",
+        values: [],
+      });
+      if ((ipResult.values || []).length === 0) {
+        await CapacitorSQLite.execute({
+          database: this.dbName,
+          statements: `CREATE TABLE IF NOT EXISTS installment_plans (
+            id TEXT PRIMARY KEY,
+            card_id TEXT NOT NULL,
+            start_date TEXT NOT NULL,
+            principal REAL NOT NULL,
+            annual_rate REAL NOT NULL,
+            total_periods INTEGER NOT NULL,
+            monthly_payment REAL NOT NULL,
+            periods TEXT NOT NULL DEFAULT '[]',
+            status TEXT NOT NULL DEFAULT 'active',
+            settled_date TEXT,
+            settled_amount REAL,
+            notes TEXT
+          );`,
+        });
+        logger.info('Migration: created installment_plans table');
+      }
+    } catch (error) {
+      logger.error('Migration installment_plans failed:', error);
     }
   }
 
@@ -280,6 +344,87 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
     }
   }
 
+  // --- Installment Plans ---
+
+  async getAllInstallmentPlans(): Promise<InstallmentPlan[]> {
+    if (this.isNative) {
+      const result = await CapacitorSQLite.query({
+        database: this.dbName,
+        statement: 'SELECT * FROM installment_plans',
+        values: [],
+      });
+      if (!result.values || result.values.length === 0) return [];
+      return result.values.map((row: StoredInstallmentPlan) => this.mapInstallmentPlan(row));
+    }
+
+    try {
+      const raw = localStorage.getItem(LS_INSTALLMENT);
+      return safeParseJson(raw, z.array(installmentPlanSchema), []);
+    } catch {
+      return [];
+    }
+  }
+
+  async saveInstallmentPlans(plans: InstallmentPlan[]): Promise<void> {
+    if (this.isNative) {
+      await CapacitorSQLite.execute({
+        database: this.dbName,
+        statements: 'DELETE FROM installment_plans;',
+      });
+
+      if (plans.length === 0) return;
+
+      const insertSQL = `INSERT INTO installment_plans (id, card_id, start_date, principal, annual_rate, total_periods, monthly_payment, periods, status, settled_date, settled_amount, notes)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
+
+      const set = plans.map((p) => ({
+        statement: insertSQL,
+        values: [
+          p.id, p.cardId, p.startDate, p.principal, p.annualRate,
+          p.totalPeriods, p.monthlyPayment, JSON.stringify(p.periods), p.status,
+          p.settledDate || null, p.settledAmount ?? null, p.notes || null,
+        ],
+      }));
+
+      await CapacitorSQLite.executeSet({ database: this.dbName, set });
+    } else {
+      localStorage.setItem(LS_INSTALLMENT, JSON.stringify(plans));
+    }
+  }
+
+  async saveInstallmentPlan(plan: InstallmentPlan): Promise<void> {
+    const plans = await this.getAllInstallmentPlans();
+    const idx = plans.findIndex(p => p.id === plan.id);
+    if (idx >= 0) plans[idx] = plan;
+    else plans.push(plan);
+    await this.saveInstallmentPlans(plans);
+  }
+
+  async deleteInstallmentPlan(id: string): Promise<void> {
+    const plans = await this.getAllInstallmentPlans();
+    await this.saveInstallmentPlans(plans.filter(p => p.id !== id));
+  }
+
+  private mapInstallmentPlan(row: StoredInstallmentPlan): InstallmentPlan {
+    let periods = [];
+    try { periods = JSON.parse(row.periods); } catch { periods = []; }
+
+    return {
+      id: row.id,
+      cardId: row.card_id,
+      startDate: row.start_date,
+      principal: row.principal,
+      annualRate: row.annual_rate,
+      totalPeriods: row.total_periods,
+      monthlyPayment: row.monthly_payment,
+      periods,
+      status: row.status as InstallmentPlan['status'],
+      settledDate: row.settled_date || undefined,
+      settledAmount: row.settled_amount ?? undefined,
+      notes: row.notes || undefined,
+    };
+  }
+
   // --- Backup Management ---
 
   getAutoBackups(): AutoBackup[] {
@@ -294,18 +439,23 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
     const backup = this.autoBackups[index];
     await this.saveCards(backup.data.cards);
     await this.savePosMachines(backup.data.posMachines);
+    if (backup.data.installmentPlans) {
+      await this.saveInstallmentPlans(backup.data.installmentPlans);
+    }
     this.loadAutoBackups();
   }
 
   async createAutoBackup(cards: CreditCard[]): Promise<void> {
     try {
       const posMachines = await this.getAllPosMachines();
+      const installmentPlans = await this.getAllInstallmentPlans();
 
       const backup: AutoBackup = {
         timestamp: new Date().toISOString(),
         data: {
           cards: JSON.parse(JSON.stringify(cards)),
           posMachines,
+          installmentPlans,
           version: '1.0',
           type: 'auto',
         },
@@ -346,6 +496,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
   async exportToJson(): Promise<string> {
     const cards = await this.getAllCards();
     const posMachines = await this.getAllPosMachines();
+    const installmentPlans = await this.getAllInstallmentPlans();
 
     return JSON.stringify(
       {
@@ -353,6 +504,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
         exportedAt: new Date().toISOString(),
         cards,
         posMachines,
+        installmentPlans,
       },
       null,
       2
@@ -373,9 +525,12 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
       throw new Error(`数据格式无效: ${errors}`);
     }
 
-    const { cards, posMachines } = result.data;
+    const { cards, posMachines, installmentPlans } = result.data;
     await this.saveCards(cards);
     await this.savePosMachines(posMachines);
+    if (installmentPlans) {
+      await this.saveInstallmentPlans(installmentPlans);
+    }
   }
 
   async exportDatabase(): Promise<{ uri: string } | null> {
