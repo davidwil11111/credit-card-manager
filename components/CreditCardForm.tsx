@@ -152,12 +152,12 @@ export const CreditCardForm: React.FC<CreditCardFormProps> = ({ initialData, onS
               <input 
                 type="text"
                 value={formData.holderName}
-                onChange={(e) => handleChange('holderName', e.target.value)}
-                onCompositionStart={() => { isComposingRef.current = true; }}
-                onCompositionEnd={(e) => {
-                  isComposingRef.current = false;
-                  handleChange('holderName', (e.target as HTMLInputElement).value);
+                onChange={(e) => {
+                  if (e.target.value === '' && isComposingRef.current) return;
+                  handleChange('holderName', e.target.value);
                 }}
+                onCompositionStart={() => { isComposingRef.current = true; }}
+                onCompositionEnd={() => { isComposingRef.current = false; }}
                 className={`w-full p-2 rounded-lg border bg-gray-50 ${errors.holderName ? 'border-red-500' : 'border-gray-200'}`}
                 placeholder="姓名"
               />
@@ -165,7 +165,7 @@ export const CreditCardForm: React.FC<CreditCardFormProps> = ({ initialData, onS
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">银行</label>
-              <input list="bank-list" type="text" value={formData.bankName} onChange={(e) => { if (!isComposingRef.current) handleChange('bankName', e.target.value); }} onCompositionStart={() => { isComposingRef.current = true; }} onCompositionEnd={(e) => { isComposingRef.current = false; handleChange('bankName', (e.target as HTMLInputElement).value); }} className={`w-full p-2 rounded-lg border bg-gray-50 ${errors.bankName ? 'border-red-500' : 'border-gray-200'}`} placeholder="选择或输入" />
+              <input list="bank-list" type="text" value={formData.bankName} onChange={(e) => { if (e.target.value === '' && isComposingRef.current) return; handleChange('bankName', e.target.value); }} onCompositionStart={() => { isComposingRef.current = true; }} onCompositionEnd={() => { isComposingRef.current = false; }} className={`w-full p-2 rounded-lg border bg-gray-50 ${errors.bankName ? 'border-red-500' : 'border-gray-200'}`} placeholder="选择或输入" />
               <datalist id="bank-list">{MOCK_BANKS.map(bank => <option key={bank} value={bank} />)}</datalist>
               {errors.bankName && <p className="text-xs text-red-500 mt-1">{errors.bankName}</p>}
             </div>
