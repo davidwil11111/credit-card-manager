@@ -29,19 +29,27 @@ export const CreditCardForm: React.FC<CreditCardFormProps> = ({ initialData, onS
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isDirty, setIsDirty] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const isComposingRef = useRef(false);
+  const lastGoodRef = useRef<Partial<CreditCard>>({});
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (initialData) {
-      setFormData({ ...initialData });
+      const d = { ...initialData };
+      setFormData(d);
+      lastGoodRef.current = d;
     }
   }, [initialData]);
 
   const handleChange = (field: keyof CreditCard, value: string | number) => {
-    if (isComposingRef.current && typeof value === 'string' && value === '') {
-      return;
-    }
-    setFormData((prev): Partial<CreditCard> => ({ ...prev, [field]: value }));
+    setFormData((prev: Partial<CreditCard>) => {
+      const prevVal = prev[field];
+      if (prevVal !== undefined && prevVal !== '' && prevVal !== 0 && (value === '' || value === undefined)) {
+        return { ...prev };
+      }
+      const next = { ...prev, [field]: value } as Partial<CreditCard>;
+      lastGoodRef.current = next;
+      return next;
+    });
     setIsDirty(true);
     if (errors[field]) {
       setErrors((prev): Record<string, string> => {
@@ -151,13 +159,9 @@ export const CreditCardForm: React.FC<CreditCardFormProps> = ({ initialData, onS
               <label className="block text-xs text-gray-500 mb-1">持卡人</label>
               <input 
                 type="text"
+                ref={nameInputRef}
                 value={formData.holderName}
-                onChange={(e) => {
-                  if (e.target.value === '' && isComposingRef.current) return;
-                  handleChange('holderName', e.target.value);
-                }}
-                onCompositionStart={() => { isComposingRef.current = true; }}
-                onCompositionEnd={() => { isComposingRef.current = false; }}
+                onChange={(e) => handleChange('holderName', e.target.value)}
                 className={`w-full p-2 rounded-lg border bg-gray-50 ${errors.holderName ? 'border-red-500' : 'border-gray-200'}`}
                 placeholder="姓名"
               />
@@ -165,7 +169,7 @@ export const CreditCardForm: React.FC<CreditCardFormProps> = ({ initialData, onS
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">银行</label>
-              <input list="bank-list" type="text" value={formData.bankName} onChange={(e) => { if (e.target.value === '' && isComposingRef.current) return; handleChange('bankName', e.target.value); }} onCompositionStart={() => { isComposingRef.current = true; }} onCompositionEnd={() => { isComposingRef.current = false; }} className={`w-full p-2 rounded-lg border bg-gray-50 ${errors.bankName ? 'border-red-500' : 'border-gray-200'}`} placeholder="选择或输入" />
+              <input list="bank-list" type="text" value={formData.bankName} onChange={(e) => handleChange('bankName', e.target.value)} className={`w-full p-2 rounded-lg border bg-gray-50 ${errors.bankName ? 'border-red-500' : 'border-gray-200'}`} placeholder="选择或输入" />
               <datalist id="bank-list">{MOCK_BANKS.map(bank => <option key={bank} value={bank} />)}</datalist>
               {errors.bankName && <p className="text-xs text-red-500 mt-1">{errors.bankName}</p>}
             </div>
