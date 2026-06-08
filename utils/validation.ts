@@ -86,8 +86,8 @@ export const importDataSchema = z.object({
 });
 
 export const creditCardFormSchema = z.object({
-  holderName: z.string().min(2, '姓名过短'),
-  bankName: z.string().min(1, '请选择银行'),
+  holderName: z.string().min(1, '请输入持卡人姓名'),
+  bankName: z.string().min(1, '请选择或输入银行'),
   cardNumber: z.string().regex(/^\d{4}$/, '请填写4位卡号'),
   billDay: z.number().int().min(1, '请选择账单日'),
 });

@@ -152,15 +152,18 @@ export const CreditCardForm: React.FC<CreditCardFormProps> = ({ initialData, onS
                 className={`w-full p-2 rounded-lg border bg-gray-50 ${errors.holderName ? 'border-red-500' : 'border-gray-200'}`}
                 placeholder="姓名"
               />
+              {errors.holderName && <p className="text-xs text-red-500 mt-1">{errors.holderName}</p>}
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">银行</label>
               <input list="bank-list" type="text" value={formData.bankName} onChange={(e) => handleChange('bankName', e.target.value)} className={`w-full p-2 rounded-lg border bg-gray-50 ${errors.bankName ? 'border-red-500' : 'border-gray-200'}`} placeholder="选择或输入" />
               <datalist id="bank-list">{MOCK_BANKS.map(bank => <option key={bank} value={bank} />)}</datalist>
+              {errors.bankName && <p className="text-xs text-red-500 mt-1">{errors.bankName}</p>}
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">卡号后4位</label>
               <input type="text" maxLength={4} value={formData.cardNumber} onChange={(e) => handleChange('cardNumber', e.target.value.replace(/\D/g, ''))} className={`w-full p-2 rounded-lg border bg-gray-50 font-mono ${errors.cardNumber ? 'border-red-500' : 'border-gray-200'}`} placeholder="8888" />
+              {errors.cardNumber && <p className="text-xs text-red-500 mt-1">{errors.cardNumber}</p>}
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div>
