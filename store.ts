@@ -115,6 +115,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             ...card,
             currentUnpaid: card.currentUnpaid + card.currentUnbilled,
             currentUnbilled: 0,
+            statementAmount: card.currentUnpaid + card.currentUnbilled,
             lastStatementDate: latestRelevantBillDate.toISOString(),
             repaymentDate: calculateRepaymentDateForBill(latestRelevantBillDate, card.repaymentConfig),
           };
