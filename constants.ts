@@ -301,6 +301,8 @@ export const generateMockCards = (count: number): CreditCard[] => {
       tempLimitExpiry: Math.random() > 0.8 ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : undefined,
       currentUnpaid: unpaid,
       currentUnbilled: unbilled,
+      statementAmount: Math.floor(unpaid * 0.8),
+      minimumRepayment: Math.floor(unpaid * 0.1),
       status: status,
       transactions: generateTransactions(15),
     };
