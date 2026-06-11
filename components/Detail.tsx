@@ -166,12 +166,8 @@ export const Detail: React.FC<DetailProps> = ({
             </div>
           </div>
 
-          {/* Current Bill + Data Grid */}
+          {/* Data Grid */}
           <div className="mb-4 space-y-4">
-            <div className="flex justify-between items-end border-b border-white border-opacity-20 pb-3">
-              <span className="text-sm font-semibold opacity-90">当期账单</span>
-              <span className="text-xl font-bold tracking-wide">{formatCurrency(card.currentUnpaid)}</span>
-            </div>
             <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-xs">
               <div className="flex justify-between items-center">
                 <span className="opacity-70 font-medium">未出账单总额</span>
@@ -193,12 +189,11 @@ export const Detail: React.FC<DetailProps> = ({
           </div>
 
           {/* Bill / Repayment Info Bar */}
-          <div className="flex justify-between items-center bg-black bg-opacity-10 rounded-lg px-4 py-2.5 mb-2" style={{fontSize: '10px'}}>
+          <div className="flex items-center bg-black bg-opacity-10 rounded-lg px-4 py-2.5 mb-2" style={{fontSize: '10px'}}>
             <div className="flex space-x-5 opacity-90">
               <span>账单日 <span className="font-bold ml-1">{billDay}</span></span>
               <span>还款日 <span className="font-bold ml-1">{repaymentDay}</span></span>
             </div>
-            <span>最低还款额 <span className="font-bold ml-1 text-sm">{formatCurrency(Math.round(card.currentUnpaid * 0.1))}</span></span>
           </div>
         </div>
       </div>
