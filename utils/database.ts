@@ -24,7 +24,6 @@ interface StoredCard {
   current_unpaid: number;
   current_unbilled: number;
   statement_amount: number;
-  minimum_repayment: number;
   status: string;
   transactions: string;
   index_col: number;
@@ -117,7 +116,6 @@ class Database {
           current_unpaid REAL NOT NULL DEFAULT 0,
           current_unbilled REAL NOT NULL DEFAULT 0,
           statement_amount REAL NOT NULL DEFAULT 0,
-          minimum_repayment REAL NOT NULL DEFAULT 0,
           status TEXT NOT NULL DEFAULT 'pending',
           transactions TEXT NOT NULL DEFAULT '[]',
           index_col INTEGER NOT NULL DEFAULT 0
@@ -185,7 +183,6 @@ class Database {
         values: [],
       });
     try {
-      // Migration 3: Add statement_amount and minimum_repayment columns to cards
       const saResult = await CapacitorSQLite.query({
         database: this.dbName,
         statement: "PRAGMA table_info(cards);",
@@ -197,17 +194,10 @@ class Database {
           database: this.dbName,
           statements: 'ALTER TABLE cards ADD COLUMN statement_amount REAL NOT NULL DEFAULT 0;',
         });
-        logger.info('Migration: added statement_amount column to cards');
-      }
-      if (!saColumns.includes('minimum_repayment')) {
-        await CapacitorSQLite.execute({
-          database: this.dbName,
-          statements: 'ALTER TABLE cards ADD COLUMN minimum_repayment REAL NOT NULL DEFAULT 0;',
-        });
-        logger.info('Migration: added minimum_repayment column to cards');
+        logger.info('Migration: added statement_amount column');
       }
     } catch (error) {
-      logger.error('Migration card columns failed:', error);
+      logger.error('Migration statement_amount failed:', error);
     }
 
       if ((ipResult.values || []).length === 0) {
@@ -267,8 +257,8 @@ class Database {
 
       if (cards.length === 0) return;
 
-      const insertSQL = `INSERT INTO cards (id, holder_name, bank_name, card_number, bill_day, repayment_config, repayment_date, last_statement_date, fixed_limit, temp_limit, temp_limit_expiry, current_unpaid, current_unbilled, statement_amount, minimum_repayment, status, transactions, index_col)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
+      const insertSQL = `INSERT INTO cards (id, holder_name, bank_name, card_number, bill_day, repayment_config, repayment_date, last_statement_date, fixed_limit, temp_limit, temp_limit_expiry, current_unpaid, current_unbilled, statement_amount, status, transactions, index_col)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
 
       const set = cards.map((card, idx) => ({
         statement: insertSQL,
@@ -287,7 +277,6 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
           card.currentUnpaid,
           card.currentUnbilled,
           card.statementAmount ?? 0,
-          card.minimumRepayment ?? 0,
           card.status,
           JSON.stringify(card.transactions),
           idx,
@@ -612,7 +601,6 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
       currentUnpaid: row.current_unpaid,
       currentUnbilled: row.current_unbilled,
       statementAmount: row.statement_amount ?? 0,
-      minimumRepayment: row.minimum_repayment ?? 0,
       status: row.status as CreditCard['status'],
       transactions,
     };
