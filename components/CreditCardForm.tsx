@@ -23,6 +23,8 @@ function makeDefaultForm(): Partial<CreditCard> {
     tempLimitExpiry: '',
     currentUnpaid: 0,
     currentUnbilled: 0,
+    statementAmount: 0,
+    minimumRepayment: 0,
   };
 }
 
@@ -253,28 +255,54 @@ export const CreditCardForm: React.FC<CreditCardFormProps> = ({ initialData, onS
 
         <section className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
           <h3 className="text-sm font-bold text-gray-800 mb-4 border-l-4 border-orange-400 pl-2">初始账单 (选填)</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">本期已出未还</label>
-              <input
-                type="number"
-                step="0.01"
-                value={formData.currentUnpaid || formData.currentUnpaid === 0 ? formData.currentUnpaid : ''}
-                onChange={(e) => handleChange('currentUnpaid', parseFloat(e.target.value) || 0)}
-                className="w-full p-2 rounded-lg border border-gray-200 bg-gray-50"
-                placeholder="0.00"
-              />
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">本期已出未还</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.currentUnpaid || formData.currentUnpaid === 0 ? formData.currentUnpaid : ''}
+                  onChange={(e) => handleChange('currentUnpaid', parseFloat(e.target.value) || 0)}
+                  className="w-full p-2 rounded-lg border border-gray-200 bg-gray-50"
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">未出账单总额</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.currentUnbilled || formData.currentUnbilled === 0 ? formData.currentUnbilled : ''}
+                  onChange={(e) => handleChange('currentUnbilled', parseFloat(e.target.value) || 0)}
+                  className="w-full p-2 rounded-lg border border-gray-200 bg-gray-50"
+                  placeholder="0.00"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">未出账单总额</label>
-              <input
-                type="number"
-                step="0.01"
-                value={formData.currentUnbilled || formData.currentUnbilled === 0 ? formData.currentUnbilled : ''}
-                onChange={(e) => handleChange('currentUnbilled', parseFloat(e.target.value) || 0)}
-                className="w-full p-2 rounded-lg border border-gray-200 bg-gray-50"
-                placeholder="0.00"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">当期账单金额</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.statementAmount || formData.statementAmount === 0 ? formData.statementAmount : ''}
+                  onChange={(e) => handleChange('statementAmount', parseFloat(e.target.value) || 0)}
+                  className="w-full p-2 rounded-lg border border-gray-200 bg-gray-50"
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">最低还款额</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.minimumRepayment || formData.minimumRepayment === 0 ? formData.minimumRepayment : ''}
+                  onChange={(e) => handleChange('minimumRepayment', parseFloat(e.target.value) || 0)}
+                  className="w-full p-2 rounded-lg border border-gray-200 bg-gray-50"
+                  placeholder="0.00"
+                />
+              </div>
             </div>
           </div>
         </section>
