@@ -37,6 +37,8 @@ export interface CreditCard {
   tempLimitExpiry?: string;
   currentUnpaid: number;
   currentUnbilled: number;
+  statementAmount: number;
+  minimumRepayment: number;
   status: RepaymentStatus;
   transactions: Transaction[];
 }
