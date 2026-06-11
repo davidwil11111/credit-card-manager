@@ -41,7 +41,6 @@ export const creditCardSchema = z.object({
   currentUnpaid: z.number(),
   currentUnbilled: z.number(),
   statementAmount: z.number(),
-  minimumRepayment: z.number(),
   status: z.enum(['paid', 'pending', 'overdue']),
   transactions: z.array(transactionSchema),
 });
