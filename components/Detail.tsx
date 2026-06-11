@@ -198,7 +198,7 @@ export const Detail: React.FC<DetailProps> = ({
               <span>账单日 <span className="font-bold ml-1">{billDay}</span></span>
               <span>还款日 <span className="font-bold ml-1">{repaymentDay}</span></span>
             </div>
-            <span>最低还款额 <span className="font-bold ml-1 text-sm">{formatCurrency(card.minimumRepayment)}</span></span>
+            <span>最低还款额 <span className="font-bold ml-1 text-sm">{formatCurrency(Math.round(card.statementAmount * 0.1))}</span></span>
           </div>
         </div>
       </div>
