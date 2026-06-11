@@ -204,7 +204,7 @@ export const Detail: React.FC<DetailProps> = ({
       </div>
 
       {/* ===== MAIN CONTENT ===== */}
-      <div className="flex-1 overflow-y-auto px-4 pb-10 scroll-container safe-area-bottom -mt-1 relative z-10 space-y-3">
+      <div className="flex-1 overflow-y-auto px-4 pb-24 scroll-container safe-area-bottom -mt-1 relative z-10 space-y-3">
 
         {/* Quick Action Grid */}
         <div className="bg-white rounded-xl shadow-sm p-4 grid grid-cols-4 gap-2 border border-gray-100">
@@ -267,28 +267,19 @@ export const Detail: React.FC<DetailProps> = ({
           </div>
         </div>
 
-        <div className="flex space-x-3 items-center">
-          <div className="relative flex-grow">
-            <select
-              value={selectedCycleKey}
-              onChange={(e) => setSelectedCycleKey(e.target.value)}
-              className="w-full bg-white border-none rounded-xl py-3 px-4 text-sm font-semibold shadow-sm appearance-none focus:ring-0"
-            >
-              {cycles.map(c => (
-                <option key={c.key} value={c.key}>{c.label} {c.key === 'unbilled' ? '(未出)' : ''}</option>
-              ))}
-            </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-              <ChevronDown size={16} className="text-gray-400" />
-            </div>
-          </div>
-          <button
-            onClick={() => onAddTransaction(card)}
-            className="bg-blue-600 text-white rounded-full py-2.5 px-6 flex items-center space-x-2 shadow-md active:scale-95 transition"
+        <div className="relative">
+          <select
+            value={selectedCycleKey}
+            onChange={(e) => setSelectedCycleKey(e.target.value)}
+            className="w-full bg-white border-none rounded-xl py-3 px-4 text-sm font-semibold shadow-sm appearance-none focus:ring-0"
           >
-            <PlusCircle size={20} />
-            <span className="text-sm font-bold">记一笔</span>
-          </button>
+            {cycles.map(c => (
+              <option key={c.key} value={c.key}>{c.label} {c.key === 'unbilled' ? '(未出)' : ''}</option>
+            ))}
+          </select>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+            <ChevronDown size={16} className="text-gray-400" />
+          </div>
         </div>
 
         {/* Transaction List */}
@@ -378,6 +369,14 @@ export const Detail: React.FC<DetailProps> = ({
 
       {showInstallmentForm && <InstallmentForm card={card} onClose={() => setShowInstallmentForm(false)} />}
       {settlementTarget && <EarlySettlementModal plan={settlementTarget} onClose={() => setSettlementTarget(null)} />}
+
+      {/* Floating Action Button */}
+      <button
+        onClick={() => onAddTransaction(card)}
+        className="fixed bottom-6 right-4 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center active:scale-90 transition z-50"
+      >
+        <PlusCircle size={28} />
+      </button>
     </div>
   );
 };
