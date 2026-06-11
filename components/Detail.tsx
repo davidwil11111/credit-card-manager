@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { CreditCard, Transaction, InstallmentPlan } from '../types';
-import { ArrowLeft, Edit, Wallet, PlusCircle, Sliders, ChevronDown, CreditCard as CardIcon, Trash2, Landmark } from 'lucide-react';
+import { ArrowLeft, Edit, Wallet, PlusCircle, Sliders, ChevronDown, CreditCard as CardIcon, Trash2, Landmark, TrendingDown, TrendingUp } from 'lucide-react';
 import { generateBillingCycles, getBankTheme } from '../constants';
 import { formatDate } from '../utils/date';
 import { formatCurrency } from '../utils/currency';
@@ -36,14 +36,10 @@ export const Detail: React.FC<DetailProps> = ({
   const [pendingDeleteTxId, setPendingDeleteTxId] = useState<string | null>(null);
   const [showInstallmentForm, setShowInstallmentForm] = useState(false);
   const [settlementTarget, setSettlementTarget] = useState<InstallmentPlan | null>(null);
-  
-  // Generate Cycles (Memoized based on billDay)
-  const rawCycles = useMemo(() => generateBillingCycles(card.billDay), [card.billDay]);
 
-  // Process cycles to rename labels dynamically based on Card Status
+  const rawCycles = useMemo(() => generateBillingCycles(card.billDay), [card.billDay]);
   const cycles = useMemo(() => {
       return rawCycles.map(c => {
-          // If this is the "Last Statement" (cycle-0) and it has unpaid balance
           if (c.key === 'cycle-0' && card.currentUnpaid > 0) {
               return { ...c, label: `当期未还 (${c.label})` };
           }
@@ -51,308 +47,306 @@ export const Detail: React.FC<DetailProps> = ({
       });
   }, [rawCycles, card.currentUnpaid]);
   
-  // Default Selection Logic: Always default to Unbilled (current billing cycle)
   const [selectedCycleKey, setSelectedCycleKey] = useState<string>('unbilled');
 
-  // Available = Fixed - Unpaid - Unbilled
   const available = card.fixedLimit - card.currentUnpaid - card.currentUnbilled;
   const themeGradient = getBankTheme(card.bankName);
+  const themeColor = useMemo(() => {
+    // Extract the first color class from the gradient for the theme
+    if (themeGradient.includes('red')) return '#dc2626';
+    if (themeGradient.includes('blue')) return '#2563eb';
+    if (themeGradient.includes('emerald')) return '#059669';
+    if (themeGradient.includes('orange')) return '#ea580c';
+    if (themeGradient.includes('indigo')) return '#4f46e5';
+    if (themeGradient.includes('cyan')) return '#0891b2';
+    if (themeGradient.includes('yellow')) return '#ca8a04';
+    if (themeGradient.includes('pink')) return '#db2777';
+    if (themeGradient.includes('green')) return '#16a34a';
+    return '#1d4ed8';
+  }, [themeGradient]);
 
-  // Find currently selected cycle object
   const currentCycle = cycles.find(c => c.key === selectedCycleKey) || cycles[0];
-  const isUnbilled = currentCycle.key === 'unbilled';
 
-  // Filter Transactions based on selected Cycle
   const filteredTransactions = useMemo(() => {
       return card.transactions.filter(tx => {
         const txDate = new Date(tx.date);
-        txDate.setHours(0, 0, 0, 0); 
-        
-        // Check date range strictly
+        txDate.setHours(0, 0, 0, 0);
         if (txDate < currentCycle.start || txDate > currentCycle.end) return false;
-
-        // Filter by Type
         if (filterType === 'all') return true;
         if (filterType === 'consumption') return tx.type === 'consumption';
         if (filterType === 'repayment') return tx.type === 'repayment';
-        
         return true;
       });
   }, [card.transactions, currentCycle, filterType]);
 
-  // --- Statistics for Current Cycle ---
-  // Find unbilled cycle for top stats display
   const unbilledCycle = cycles.find(c => c.key === 'unbilled');
-  
   const cycleStats = useMemo(() => {
       let totalConsumption = 0;
       let totalRepayment = 0;
       let actualReceipt = 0;
-      let count = 0;
-
-      // Use unbilled cycle for top stats display
       if (unbilledCycle) {
           card.transactions.forEach(tx => {
               const txDate = new Date(tx.date);
               txDate.setHours(0, 0, 0, 0);
-              
-              // Only count transactions in unbilled range
               if (txDate >= unbilledCycle.start && txDate <= unbilledCycle.end) {
                   if (tx.type === 'consumption') {
-                      totalConsumption -= tx.amount;
+                      totalConsumption += Math.abs(tx.amount);
                       actualReceipt += (tx.actualReceipt || 0);
-                      count++;
                   } else if (tx.type === 'repayment') {
                       totalRepayment += Math.abs(tx.amount);
                   }
               }
           });
       }
-
-      return { totalConsumption, totalRepayment, actualReceipt, count };
+      return { totalConsumption, totalRepayment, actualReceipt };
   }, [card.transactions, unbilledCycle]);
 
-
-  // Calculate Overdue Info for the CURRENT UNPAID BILL (cycle-0)
   const repaymentInfo = useMemo(() => {
       if (card.currentUnpaid <= 0) return null;
-      
       const today = new Date();
       today.setHours(0,0,0,0);
       const repaymentDate = new Date(card.repaymentDate);
       repaymentDate.setHours(0,0,0,0);
-      
       const diffTime = repaymentDate.getTime() - today.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      return {
-          days: diffDays, // negative means overdue
-          amount: card.currentUnpaid
-      };
+      return { days: diffDays, amount: card.currentUnpaid };
   }, [card.currentUnpaid, card.repaymentDate]);
+
+  const billDay = `每月 ${card.billDay} 日`;
+  const repaymentDay = (() => {
+    if (card.repaymentConfig.type === 'fixed_day') return `每月 ${card.repaymentConfig.value} 日`;
+    return `账单日后 ${card.repaymentConfig.value} 天`;
+  })();
 
   return (
     <div className="flex flex-col h-full bg-gray-50 relative">
-      {/* 1. Header (Fixed/Sticky) with Dynamic Gradient */}
+      {/* ===== HEADER SECTION ===== */}
       <div className={`bg-gradient-to-br ${themeGradient} sticky top-0 z-30 shadow-lg text-white safe-area-top`}>
-         <div className="p-4 pb-4 rounded-b-[2rem] pointer-events-auto relative overflow-hidden transition-colors duration-500">
-            
-            {/* Background Watermark */}
-            <div className="absolute -right-4 top-10 opacity-10 pointer-events-none select-none">
-                 <span className="text-8xl font-black">{card.bankName.substring(0,2)}</span>
-            </div>
+        <div className="pt-3 pb-1 px-5 relative overflow-hidden">
+          {/* Background Watermark */}
+          <div className="absolute right-[-20px] top-8 opacity-10 text-8xl font-bold select-none pointer-events-none">
+            {card.bankName.substring(0, 2)}
+          </div>
 
-            <div className="flex items-center justify-between mb-2 relative z-10">
-               <button onClick={onBack} className="p-3 -ml-3 hover:bg-white/10 rounded-full transition backdrop-blur-sm">
-                  <ArrowLeft size={24} />
-               </button>
-               <h1 className="font-bold text-lg opacity-90">{card.bankName} | {card.holderName}</h1>
-               <div className="flex gap-1">
-                  <button onClick={() => onEdit(card)} className="p-2 -mr-1 hover:bg-white/10 rounded-full transition text-sm flex items-center gap-1 backdrop-blur-sm">
-                     <Edit size={16} /> 编辑
-                  </button>
-                  <button onClick={() => setShowDeleteConfirm('card')} className="p-2 hover:bg-white/10 rounded-full transition backdrop-blur-sm">
-                     <Trash2 size={16} />
-                  </button>
-               </div>
+          {/* Top Bar: Back, Title, Edit/Delete */}
+          <div className="flex justify-between items-center mb-5">
+            <div className="flex items-center space-x-3">
+              <button onClick={onBack} className="hover:bg-white/10 rounded-full transition p-1">
+                <ArrowLeft size={20} />
+              </button>
+              <h1 className="text-lg font-medium">{card.bankName} | {card.holderName}</h1>
             </div>
-
-            {/* Main Header Stats (Refactored Layout) */}
-            <div className="grid grid-cols-2 gap-4 mb-4 relative z-10 animate-in fade-in zoom-in-95 duration-300 px-2 mt-2">
-               {/* Left: Current Unpaid */}
-               <div className="flex flex-col relative">
-                   <div className="flex items-center gap-2 mb-1">
-                        <span className="text-white/70 text-xs">当期未还</span>
-                        {repaymentInfo && (
-                           <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold backdrop-blur-md border border-white/10 ${
-                               repaymentInfo.days < 0 ? 'bg-red-500 text-white' : 'bg-white/20 text-white'
-                           }`}>
-                               {repaymentInfo.days < 0 ? `逾期${Math.abs(repaymentInfo.days)}天` : `剩${repaymentInfo.days}天`}
-                           </span>
-                        )}
-                   </div>
-                   <span className="text-3xl font-bold tracking-tight">{formatCurrency(card.currentUnpaid)}</span>
-               </div>
-
-               {/* Right: Available */}
-               <div className="flex flex-col items-end relative">
-                   <span className="text-white/70 text-xs mb-1">可用额度</span>
-                   <span className="text-3xl font-bold tracking-tight">{formatCurrency(available)}</span>
-               </div>
+            <div className="flex space-x-4 items-center">
+              <button onClick={() => onEdit(card)} className="flex items-center space-x-1 text-xs opacity-90 hover:opacity-100 transition">
+                <Edit size={14} />
+                <span>编辑</span>
+              </button>
+              <button onClick={() => setShowDeleteConfirm('card')} className="opacity-90 hover:opacity-100 transition">
+                <Trash2 size={16} />
+              </button>
             </div>
+          </div>
 
-            {/* Cycle Selector & Cycle Stats */}
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/10 relative z-10 animate-in slide-in-from-bottom-2 duration-500">
-                <div className="grid grid-cols-4 gap-2 text-center">
-                    <div>
-                        <p className="text-[10px] text-white/60 mb-0.5">未出账单总额</p>
-                        <p className="font-bold text-base">{formatCurrency(card.currentUnbilled)}</p>
-                    </div>
-                    <div>
-                        <p className="text-[10px] text-white/60 mb-0.5">本期消费</p>
-                        <p className="font-bold text-base">{formatCurrency(cycleStats.totalConsumption)}</p>
-                    </div>
-                    <div>
-                        <p className="text-[10px] text-white/60 mb-0.5">本期还款</p>
-                        <p className="font-bold text-base text-green-300">{formatCurrency(cycleStats.totalRepayment)}</p>
-                    </div>
-                    <div>
-                        <p className="text-[10px] text-white/60 mb-0.5">实际到账</p>
-                        <p className="font-bold text-base text-orange-200">{formatCurrency(cycleStats.actualReceipt)}</p>
-                    </div>
-                </div>
+          {/* Main Balances */}
+          <div className="grid grid-cols-2 gap-4 mb-3">
+            <div>
+              <div className="flex items-center space-x-2 text-xs opacity-80 mb-1">
+                <span>当期未还</span>
+                {repaymentInfo && (
+                  <span className={`bg-white bg-opacity-20 px-1.5 py-0.5 rounded ${repaymentInfo.days < 0 ? 'bg-red-500' : ''} text-white font-bold`} style={{fontSize: '9px'}}>
+                    {repaymentInfo.days < 0 ? `逾期${Math.abs(repaymentInfo.days)}天` : `剩${repaymentInfo.days}天`}
+                  </span>
+                )}
+              </div>
+              <div className="text-3xl font-bold tracking-tight">{formatCurrency(card.currentUnpaid)}</div>
             </div>
-         </div>
+            <div className="text-right">
+              <div className="text-xs opacity-80 mb-1">可用额度</div>
+              <div className="text-3xl font-bold tracking-tight">{formatCurrency(available)}</div>
+            </div>
+          </div>
+
+          {/* Current Bill + Data Grid */}
+          <div className="mb-4 space-y-4">
+            <div className="flex justify-between items-end border-b border-white border-opacity-20 pb-3">
+              <span className="text-sm font-semibold opacity-90">当期账单</span>
+              <span className="text-xl font-bold tracking-wide">{formatCurrency(card.currentUnpaid)}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="opacity-70 font-medium">未出账单总额</span>
+                <span className="font-semibold">{formatCurrency(card.currentUnbilled)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="opacity-70 font-medium">本期消费</span>
+                <span className="font-semibold">-{formatCurrency(cycleStats.totalConsumption)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="opacity-70 font-medium">本期还款</span>
+                <span className="font-semibold text-green-300">+{formatCurrency(cycleStats.totalRepayment)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="opacity-70 font-medium">实际到账</span>
+                <span className="font-semibold">{formatCurrency(cycleStats.actualReceipt)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bill / Repayment Info Bar */}
+          <div className="flex justify-between items-center bg-black bg-opacity-10 rounded-lg px-4 py-2.5 mb-2" style={{fontSize: '10px'}}>
+            <div className="flex space-x-5 opacity-90">
+              <span>账单日 <span className="font-bold ml-1">{billDay}</span></span>
+              <span>还款日 <span className="font-bold ml-1">{repaymentDay}</span></span>
+            </div>
+            <span>最低还款额 <span className="font-bold ml-1 text-sm">{formatCurrency(Math.round(card.currentUnpaid * 0.1))}</span></span>
+          </div>
+        </div>
       </div>
 
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto pb-10 scroll-container safe-area-bottom">
-         
-         {/* 2. Quick Actions */}
-         <div className="mx-4 -mt-2 bg-white rounded-xl shadow-lg shadow-gray-200/50 p-4 relative z-20 mb-4 animate-in slide-in-from-bottom-4 duration-500 delay-100">
-             <div className="grid grid-cols-4 gap-2 text-center">
-                 <button onClick={() => onQuickAction('adjust_unpaid', card)} className="flex flex-col items-center gap-2 p-1 active:bg-gray-50 rounded-lg group">
-                     <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-active:scale-90 transition"><Sliders size={18}/></div>
-                     <span className="text-[10px] text-gray-600 font-medium">调剩余未还</span>
-                 </button>
-                 <button onClick={() => onQuickAction('adjust_limit', card)} className="flex flex-col items-center gap-2 p-1 active:bg-gray-50 rounded-lg group">
-                     <div className="w-10 h-10 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center group-active:scale-90 transition"><Edit size={18}/></div>
-                     <span className="text-[10px] text-gray-600 font-medium">提升固定额</span>
-                 </button>
-                 <button onClick={() => onQuickAction('adjust_available', card)} className="flex flex-col items-center gap-2 p-1 active:bg-gray-50 rounded-lg group">
-                     <div className="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center group-active:scale-90 transition"><Wallet size={18}/></div>
-                     <span className="text-[10px] text-gray-600 font-medium">调可用额度</span>
-                 </button>
-                 <button onClick={() => setShowInstallmentForm(true)} className="flex flex-col items-center gap-2 p-1 active:bg-gray-50 rounded-lg group">
-                     <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center group-active:scale-90 transition"><Landmark size={18}/></div>
-                     <span className="text-[10px] text-gray-600 font-medium">分期管理</span>
-                 </button>
-             </div>
-         </div>
-         
-         {/* 3. Basic Info Cards */}
-         <div className="mx-4 grid grid-cols-2 gap-3 mb-4 animate-in slide-in-from-bottom-4 duration-500 delay-150">
-             <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
-                 <p className="text-xs text-gray-400 mb-1">固定额度</p>
-                 <p className="font-bold text-gray-800">{formatCurrency(card.fixedLimit)}</p>
-             </div>
-             <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
-                 <p className="text-xs text-gray-400 mb-1">卡号后四位</p>
-                 <p className="font-bold text-gray-800 font-mono">{card.cardNumber}</p>
-             </div>
-         </div>
+      {/* ===== MAIN CONTENT ===== */}
+      <div className="flex-1 overflow-y-auto px-4 pb-10 scroll-container safe-area-bottom -mt-1 relative z-10 space-y-3">
 
-         {/* 4. Installment Plans */}
-         {<div className="mx-4 mb-4 animate-in slide-in-from-bottom-4 duration-500 delay-200">
-            <InstallmentPlanView cardId={card.id} onOpenSettlement={setSettlementTarget} />
-         </div>}
+        {/* Quick Action Grid */}
+        <div className="bg-white rounded-xl shadow-sm p-4 grid grid-cols-4 gap-2 border border-gray-100">
+          <button onClick={() => onQuickAction('adjust_unpaid', card)} className="flex flex-col items-center">
+            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mb-2 text-blue-500 active:scale-90 transition">
+              <Sliders size={22} />
+            </div>
+            <span className="text-[10px] text-gray-600 font-medium">调剩余未还</span>
+          </button>
+          <button onClick={() => onQuickAction('adjust_limit', card)} className="flex flex-col items-center">
+            <div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center mb-2 text-orange-500 active:scale-90 transition">
+              <Edit size={22} />
+            </div>
+            <span className="text-[10px] text-gray-600 font-medium">提升固定额</span>
+          </button>
+          <button onClick={() => onQuickAction('adjust_available', card)} className="flex flex-col items-center">
+            <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mb-2 text-green-500 active:scale-90 transition">
+              <Wallet size={22} />
+            </div>
+            <span className="text-[10px] text-gray-600 font-medium">调可用额度</span>
+          </button>
+          <button onClick={() => setShowInstallmentForm(true)} className="flex flex-col items-center">
+            <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center mb-2 text-purple-500 active:scale-90 transition">
+              <Landmark size={22} />
+            </div>
+            <span className="text-[10px] text-gray-600 font-medium">分期管理</span>
+          </button>
+        </div>
 
-         {/* 5. Transaction Records with Cycle Selector */}
-         <div className="px-4 animate-in slide-in-from-bottom-4 duration-500 delay-200">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
-                    <button 
-                        onClick={() => setFilterType('all')}
-                        className={`text-xs px-3 py-1.5 rounded-md font-bold transition ${filterType === 'all' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'}`}
-                    >全部</button>
-                    <button 
-                        onClick={() => setFilterType('consumption')}
-                        className={`text-xs px-3 py-1.5 rounded-md font-bold transition ${filterType === 'consumption' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'}`}
-                    >消费</button>
-                    <button 
-                        onClick={() => setFilterType('repayment')}
-                        className={`text-xs px-3 py-1.5 rounded-md font-bold transition ${filterType === 'repayment' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'}`}
-                    >还款</button>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="relative">
-                        <select 
-                            value={selectedCycleKey}
-                            onChange={(e) => setSelectedCycleKey(e.target.value)}
-                            className="appearance-none bg-white text-gray-700 text-xs font-bold pr-6 pl-3 py-2 rounded-lg outline-none cursor-pointer border border-gray-200 hover:border-blue-300 transition shadow-sm min-w-[120px]"
-                        >
-                            {cycles.map(c => (
-                                <option key={c.key} value={c.key} className="text-gray-800">
-                                    {c.label} {c.key === 'unbilled' ? '(未出)' : ''}
-                                </option>
-                            ))}
-                        </select>
-                        <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+        {/* Info Cards */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+            <p className="text-xs text-gray-400 mb-1">固定额度</p>
+            <p className="text-lg font-bold text-gray-800">{formatCurrency(card.fixedLimit)}</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+            <p className="text-xs text-gray-400 mb-1">卡号后四位</p>
+            <p className="text-lg font-bold text-gray-800 font-mono">{card.cardNumber || '----'}</p>
+          </div>
+        </div>
+
+        {/* Installment Plans */}
+        <InstallmentPlanView cardId={card.id} onOpenSettlement={setSettlementTarget} />
+
+        {/* Transaction Controls */}
+        <div className="flex items-center space-x-2">
+          <div className="flex bg-gray-200 bg-opacity-50 p-1 rounded-lg flex-shrink-0">
+            <button
+              onClick={() => setFilterType('all')}
+              className={`px-4 py-1.5 rounded-md text-xs font-semibold flex-shrink-0 transition ${filterType === 'all' ? 'bg-white shadow-sm' : 'text-gray-500 font-medium'}`}
+            >全部</button>
+            <button
+              onClick={() => setFilterType('consumption')}
+              className={`px-4 py-1.5 rounded-md text-xs font-semibold flex-shrink-0 transition ${filterType === 'consumption' ? 'bg-white shadow-sm' : 'text-gray-500 font-medium'}`}
+            >消费</button>
+            <button
+              onClick={() => setFilterType('repayment')}
+              className={`px-4 py-1.5 rounded-md text-xs font-semibold flex-shrink-0 transition ${filterType === 'repayment' ? 'bg-white shadow-sm' : 'text-gray-500 font-medium'}`}
+            >还款</button>
+          </div>
+        </div>
+
+        <div className="flex space-x-3 items-center">
+          <div className="relative flex-grow">
+            <select
+              value={selectedCycleKey}
+              onChange={(e) => setSelectedCycleKey(e.target.value)}
+              className="w-full bg-white border-none rounded-xl py-3 px-4 text-sm font-semibold shadow-sm appearance-none focus:ring-0"
+            >
+              {cycles.map(c => (
+                <option key={c.key} value={c.key}>{c.label} {c.key === 'unbilled' ? '(未出)' : ''}</option>
+              ))}
+            </select>
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+              <ChevronDown size={16} className="text-gray-400" />
+            </div>
+          </div>
+          <button
+            onClick={() => onAddTransaction(card)}
+            className="bg-blue-600 text-white rounded-full py-2.5 px-6 flex items-center space-x-2 shadow-md active:scale-95 transition"
+          >
+            <PlusCircle size={20} />
+            <span className="text-sm font-bold">记一笔</span>
+          </button>
+        </div>
+
+        {/* Transaction List */}
+        {filteredTransactions.length === 0 ? (
+          <div className="text-center py-12 text-gray-400 text-xs bg-white rounded-xl border border-dashed">
+            <Wallet size={32} className="mx-auto mb-3 opacity-15" />
+            <p className="font-medium text-gray-500">{selectedCycleKey === 'unbilled' ? '暂无未出账单记录' : '该账单周期无记录'}</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredTransactions.map((tx) => (
+              <div key={tx.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 group">
+                <div className="flex items-start justify-between">
+                  <div className="flex space-x-4">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
+                      tx.type === 'repayment' ? 'bg-green-50 text-green-400' :
+                      tx.type === 'loan_bill' || tx.type === 'installment_start' ? 'bg-yellow-50 text-yellow-500' :
+                      'bg-orange-50 text-orange-400'
+                    }`}>
+                      {tx.type === 'repayment' ? <TrendingUp size={24} /> :
+                       tx.type === 'loan_bill' || tx.type === 'installment_start' ? <Landmark size={24} /> :
+                       <CardIcon size={24} />}
                     </div>
-                    <button 
-                        onClick={() => onAddTransaction(card)}
-                        className="text-xs font-bold text-white bg-blue-600 px-4 py-2 rounded-full flex items-center gap-1 shadow-md hover:bg-blue-700 active:scale-95 transition"
-                    >
-                        <PlusCircle size={14}/> 记一笔
-                    </button>
+                    <div>
+                      <h3 className="font-bold text-gray-800 text-base leading-tight">{tx.notes || tx.merchantType || '消费'}</h3>
+                      <p className="text-xs text-gray-400 mt-0.5">{formatDate(tx.date)} · {tx.channel}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-lg font-bold ${tx.amount > 0 ? 'text-green-500' : 'text-gray-900'}`}>
+                      {tx.amount > 0 ? '+' : ''}{formatCurrency(tx.amount)}
+                    </p>
+                    <span className={`inline-block mt-1 px-2 py-0.5 rounded border font-medium ${tx.type === 'repayment' ? 'bg-green-50 text-green-400 border-green-100' : 'bg-orange-50 text-orange-400 border-orange-100'}`} style={{fontSize: '10px'}}>
+                      {tx.merchantType || tx.channel}
+                    </span>
+                  </div>
                 </div>
-            </div>
-            
-            <div className="space-y-3">
-               {filteredTransactions.length === 0 ? (
-                   <div className="text-center py-10 text-gray-400 text-xs bg-white rounded-xl border border-dashed">
-                       <Wallet size={24} className="mx-auto mb-2 opacity-20"/>
-                       {currentCycle.key === 'unbilled' ? '暂无未出账单记录' : '该账单周期无记录'}
-                   </div>
-               ) : (
-                   filteredTransactions.map((tx) => (
-                      <div key={tx.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-50 group hover:border-gray-200 transition">
-                         <div className="flex justify-between items-start mb-2">
-                            <div className="flex gap-3">
-                               <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                                   tx.type === 'consumption' ? 'bg-orange-50 text-orange-500' :
-                                   'bg-green-50 text-green-500'
-                               }`}>
-                                   {tx.type === 'consumption' ? <CardIcon size={18}/> : <Wallet size={18}/>}
-                               </div>
-                               <div>
-                                   <div className="flex items-center gap-2 mb-0.5">
-                                      <span className="font-bold text-gray-800 text-sm">{tx.notes || tx.merchantType}</span>
-                                   </div>
-                                   <p className="text-xs text-gray-400 flex items-center gap-1">
-                                      {formatDate(tx.date)} · {tx.channel}
-                                   </p>
-                               </div>
-                            </div>
-                            <div className="text-right">
-                               <p className={`font-bold text-base ${
-                                  tx.type === 'repayment' ? 'text-green-600' : 'text-gray-900'
-                               }`}>
-                                  {tx.amount > 0 ? '+' : ''}{formatCurrency(tx.amount)}
-                               </p>
-                               <span className={`text-[10px] px-1.5 py-0.5 rounded border inline-block mt-1 ${
-                                     tx.type === 'consumption' ? 'border-orange-100 text-orange-400 bg-orange-50/50' : 
-                                     'border-green-100 text-green-500 bg-green-50/50'
-                                  }`}>
-                                     {tx.merchantType}
-                               </span>
-                            </div>
-                         </div>
-                         
-                         <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-50 text-[10px] text-gray-400">
-                            <div className="flex gap-3">
-                               {tx.cost > 0 && <span className="text-gray-500 font-medium">手续费: ¥{tx.cost}</span>}
-                               {tx.actualReceipt !== 0 && <span className="text-orange-500 font-medium">到账: ¥{tx.actualReceipt}</span>}
-                            </div>
-                            <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => onEditTransaction(card, tx)} className="text-blue-500 flex items-center gap-0.5 hover:underline">
-                                    修改
-                                </button>
-                                <button onClick={() => { setPendingDeleteTxId(tx.id); setShowDeleteConfirm('transaction'); }} className="text-red-500 flex items-center gap-0.5 hover:underline">
-                                    删除
-                                </button>
-                            </div>
-                         </div>
-                      </div>
-                   ))
-               )}
-            </div>
-         </div>
 
-         <div className="h-12"></div>
+                {(tx.cost > 0 || tx.actualReceipt !== 0) && (
+                  <div className="mt-4 pt-4 border-t border-gray-50 flex space-x-4">
+                    {tx.cost > 0 && <p className="text-xs text-gray-400">手续费: {formatCurrency(tx.cost)}</p>}
+                    {tx.actualReceipt !== 0 && <p className="text-xs text-orange-400 font-semibold" style={{color: themeColor}}>到账: {formatCurrency(tx.actualReceipt)}</p>}
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-3 mt-3 pt-2 border-t border-gray-50 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => onEditTransaction(card, tx)} className="text-xs text-blue-500 flex items-center gap-0.5 hover:underline">修改</button>
+                  <button onClick={() => { setPendingDeleteTxId(tx.id); setShowDeleteConfirm('transaction'); }} className="text-xs text-red-500 flex items-center gap-0.5 hover:underline">删除</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="h-12"></div>
       </div>
 
-      {/* 删除确认弹窗 */}
+      {/* Delete Confirm Dialog */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
@@ -367,38 +361,23 @@ export const Detail: React.FC<DetailProps> = ({
                 {showDeleteConfirm === 'card' ? '确定要删除这张信用卡吗？此操作不可恢复。' : '确定要删除这条交易记录吗？'}
               </p>
               <div className="flex gap-3">
-                <button onClick={() => { setShowDeleteConfirm(null); setPendingDeleteTxId(null); }} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-medium text-sm hover:bg-gray-50">
-                  取消
-                </button>
-                <button 
+                <button onClick={() => { setShowDeleteConfirm(null); setPendingDeleteTxId(null); }} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-medium text-sm hover:bg-gray-50">取消</button>
+                <button
                   onClick={() => {
-                    if (showDeleteConfirm === 'card') {
-                      onDeleteCard(card.id);
-                    } else if (pendingDeleteTxId) {
-                      onDeleteTransaction(card, pendingDeleteTxId);
-                    }
-                    setShowDeleteConfirm(null);
-                    setPendingDeleteTxId(null);
+                    if (showDeleteConfirm === 'card') onDeleteCard(card.id);
+                    else if (pendingDeleteTxId) onDeleteTransaction(card, pendingDeleteTxId);
+                    setShowDeleteConfirm(null); setPendingDeleteTxId(null);
                   }}
                   className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-bold text-sm hover:bg-red-600 shadow-md"
-                >
-                  确认删除
-                </button>
+                >确认删除</button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Installment Form Modal */}
-      {showInstallmentForm && (
-        <InstallmentForm card={card} onClose={() => setShowInstallmentForm(false)} />
-      )}
-
-      {/* Early Settlement Modal */}
-      {settlementTarget && (
-        <EarlySettlementModal plan={settlementTarget} onClose={() => setSettlementTarget(null)} />
-      )}
+      {showInstallmentForm && <InstallmentForm card={card} onClose={() => setShowInstallmentForm(false)} />}
+      {settlementTarget && <EarlySettlementModal plan={settlementTarget} onClose={() => setSettlementTarget(null)} />}
     </div>
   );
 };
