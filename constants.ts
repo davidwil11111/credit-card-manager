@@ -299,6 +299,7 @@ export const generateMockCards = (count: number): CreditCard[] => {
       fixedLimit: limit,
       tempLimit: Math.random() > 0.8 ? 5000 : 0,
       tempLimitExpiry: Math.random() > 0.8 ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : undefined,
+      statementAmount: unpaid,
       currentUnpaid: unpaid,
       currentUnbilled: unbilled,
       status: status,

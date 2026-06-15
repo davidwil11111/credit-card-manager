@@ -1,8 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Overview } from './components/Overview';
 import { Detail } from './components/Detail';
-import { Analysis } from './components/Analysis';
+import { Statistics } from './components/Statistics';
 import { CreditCardForm } from './components/CreditCardForm';
 import { TransactionForm } from './components/TransactionForm';
 import { SplashScreen } from './components/SplashScreen';
@@ -15,9 +15,12 @@ import { logger } from './utils/logger';
 import { useAppStore } from './store';
 import { notifications } from './utils/notifications';
 import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 
 const App: React.FC = () => {
-  const [view, setView] = useState<'overview' | 'detail' | 'form' | 'analysis'>('overview');
+  const [view, setView] = useState<'overview' | 'detail' | 'form' | 'statistics'>('overview');
   const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
@@ -34,6 +37,59 @@ const App: React.FC = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [backupManagementOpen, setBackupManagementOpen] = useState(false);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
+
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const swipeRef = useRef({ startX: 0, startY: 0, isTracking: false });
+  const navStateRef = useRef({ view: 'overview' as string, isTransactionFormOpen: false, modalsOpen: false,
+    confirmDialogOpen: false, inputDialogOpen: false, backupManagementOpen: false, logViewerOpen: false, settingsOpen: false });
+  navStateRef.current = {
+    view, isTransactionFormOpen,
+    modalsOpen: confirmDialog.isOpen || settingsOpen || inputDialog.isOpen || backupManagementOpen || logViewerOpen,
+    confirmDialogOpen: confirmDialog.isOpen, inputDialogOpen: inputDialog.isOpen,
+    backupManagementOpen, logViewerOpen, settingsOpen,
+  };
+
+  const handleSwipeBack = () => {
+    if (confirmDialog.isOpen) { setConfirmDialog(p => ({ ...p, isOpen: false })); }
+    else if (inputDialog.isOpen) { setInputDialog(p => ({ ...p, isOpen: false })); }
+    else if (backupManagementOpen) { setBackupManagementOpen(false); }
+    else if (logViewerOpen) { setLogViewerOpen(false); }
+    else if (settingsOpen) { setSettingsOpen(false); }
+    else if (isTransactionFormOpen) { setIsTransactionFormOpen(false); }
+    else if (view === 'form') { handleFormCancel(); }
+    else if (view !== 'overview') { handleBackToOverview(); }
+  };
+  const handleSwipeBackRef = useRef(handleSwipeBack);
+  handleSwipeBackRef.current = handleSwipeBack;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (view === 'overview' || isTransactionFormOpen && (confirmDialog.isOpen || settingsOpen || inputDialog.isOpen)) return;
+    const touch = e.touches[0];
+    if (touch.clientX < 30) {
+      swipeRef.current = { startX: touch.clientX, startY: touch.clientY, isTracking: true };
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!swipeRef.current.isTracking) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - swipeRef.current.startX;
+    const dy = Math.abs(touch.clientY - swipeRef.current.startY);
+    if (dx > 10 && dx > dy * 0.5) {
+      setSwipeOffset(Math.min(dx, 200));
+    } else if (dy > dx) {
+      swipeRef.current.isTracking = false;
+      setSwipeOffset(0);
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!swipeRef.current.isTracking) return;
+    swipeRef.current.isTracking = false;
+    const dx = e.changedTouches[0].clientX - swipeRef.current.startX;
+    if (dx > 80) { handleSwipeBack(); }
+    setSwipeOffset(0);
+  };
 
   const {
     cards, posMachines, selectedCard, notificationEnabled,
@@ -112,9 +168,22 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, [isInitialized, notificationEnabled, cards]);
 
+  // Intercept Android back gesture via native onBackPressed → evaluateJavascript
+  useEffect(() => {
+    (window as any).__handleBackButton = () => {
+      const s = navStateRef.current;
+      if (s.view !== 'overview' || s.isTransactionFormOpen || s.modalsOpen) {
+        handleSwipeBackRef.current();
+      } else {
+        CapacitorApp.exitApp();
+      }
+    };
+    return () => { delete (window as any).__handleBackButton; };
+  }, []);
+
   const handleSelectCard = (card: CreditCard) => { setSelectedCard(card); setView('detail'); };
   const handleBackToOverview = () => { setSelectedCard(null); setView('overview'); };
-  const handleOpenAnalysis = () => { setView('analysis'); };
+  const handleOpenStatistics = () => { setView('statistics'); };
   const handleAddCard = () => { setEditingCard(null); setView('form'); };
   const handleEditCard = (card: CreditCard) => { setEditingCard(card); setView('form'); };
 
@@ -219,12 +288,28 @@ const App: React.FC = () => {
   };
 
   const handleExportData = async () => {
+    const fileName = `cc_manager_backup_${new Date().toISOString().split('T')[0]}`;
+    const jsonStr = await database.exportToJson();
+
     if (Capacitor.isNativePlatform()) {
-      await handleExportShare();
+      try {
+        const result = await Filesystem.writeFile({
+          path: fileName + '.json',
+          data: jsonStr,
+          directory: Directory.Documents,
+          encoding: Encoding.UTF8,
+        });
+
+        await Share.share({
+          title: '信用卡管家备份数据',
+          text: '信用卡管家数据备份（含完整交易流水）',
+          files: [result.uri],
+        });
+      } catch (error: any) {
+        logger.error('Export share failed:', error);
+        alert('导出失败：' + (error?.message || error?.toString?.() || '请重试'));
+      }
     } else {
-      const fileName = `cc_manager_backup_${new Date().toISOString().split('T')[0]}`;
-      const jsonStr = await database.exportToJson();
-      
       const blob = new Blob([jsonStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -233,29 +318,6 @@ const App: React.FC = () => {
       document.body.appendChild(link);
       link.click();
       setTimeout(() => { document.body.removeChild(link); URL.revokeObjectURL(url); }, 200);
-    }
-  };
-
-  const handleExportShare = async () => {
-    try {
-      if (Capacitor.isNativePlatform()) {
-        const dbResult = await database.exportDatabase();
-        
-        if (dbResult) {
-          const { Share } = await import('@capacitor/share');
-          
-          await Share.share({
-            title: '信用卡管理备份数据',
-            text: '信用卡管理数据备份（JSON格式）',
-            url: dbResult.uri
-          });
-        } else {
-          alert('数据库导出失败，请重试');
-        }
-      }
-    } catch (error) {
-      logger.error('Export share failed:', error);
-      alert('导出失败，请重试');
     }
   };
 
@@ -268,7 +330,22 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="w-full h-screen max-w-md mx-auto bg-gray-100 shadow-2xl overflow-hidden relative safe-area-bottom">
+    <div
+      className="w-full h-screen max-w-md mx-auto bg-gray-100 shadow-2xl overflow-hidden relative safe-area-bottom"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {swipeOffset > 0 && (
+        <div className="absolute inset-y-0 left-0 z-50 pointer-events-none flex items-center" style={{ width: swipeOffset }}>
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-transparent" />
+          <div className="absolute left-3 w-8 h-8 rounded-full bg-blue-600/30 flex items-center justify-center" style={{ opacity: Math.min(swipeOffset / 80, 1) }}>
+            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </div>
+        </div>
+      )}
       {view === 'overview' && (
         <Overview
           onSelectCard={handleSelectCard}
@@ -277,11 +354,11 @@ const App: React.FC = () => {
           onDeleteCard={handleDeleteCard}
           onBatchDelete={handleBatchDelete}
           onOpenSettings={() => setSettingsOpen(true)}
-          onOpenAnalysis={handleOpenAnalysis}
+          onOpenStatistics={handleOpenStatistics}
         />
       )}
-      {view === 'analysis' && (
-        <Analysis onBack={handleBackToOverview} />
+      {view === 'statistics' && (
+        <Statistics onBack={handleBackToOverview} />
       )}
       {view === 'detail' && selectedCard && (
         <Detail

@@ -1,10 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import { CreditCard, Transaction } from '../types';
-import { ArrowLeft, Edit, Wallet, PlusCircle, Sliders, ChevronDown, CreditCard as CardIcon, Trash2 } from 'lucide-react';
+import { CreditCard, Transaction, InstallmentPlan } from '../types';
+import { ArrowLeft, Edit, Wallet, PlusCircle, Sliders, ChevronDown, CreditCard as CardIcon, Trash2, Landmark } from 'lucide-react';
 import { generateBillingCycles, getBankTheme } from '../constants';
 import { formatDate } from '../utils/date';
 import { formatCurrency } from '../utils/currency';
 import { useAppStore } from '../store';
+import { InstallmentForm } from './InstallmentForm';
+import { InstallmentPlanView } from './InstallmentPlanView';
+import { EarlySettlementModal } from './EarlySettlementModal';
 
 interface DetailProps {
   onBack: () => void;
@@ -31,6 +34,8 @@ export const Detail: React.FC<DetailProps> = ({
   const [filterType, setFilterType] = useState<'all' | 'consumption' | 'repayment'>('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<'card' | 'transaction' | null>(null);
   const [pendingDeleteTxId, setPendingDeleteTxId] = useState<string | null>(null);
+  const [showInstallmentForm, setShowInstallmentForm] = useState(false);
+  const [settlementTarget, setSettlementTarget] = useState<InstallmentPlan | null>(null);
   
   // Generate Cycles (Memoized based on billDay)
   const rawCycles = useMemo(() => generateBillingCycles(card.billDay), [card.billDay]);
@@ -52,6 +57,16 @@ export const Detail: React.FC<DetailProps> = ({
   // Available = Fixed - Unpaid - Unbilled
   const available = card.fixedLimit - card.currentUnpaid - card.currentUnbilled;
   const themeGradient = getBankTheme(card.bankName);
+
+  const billDateStr = useMemo(() => {
+    const now = new Date();
+    return `${String(now.getMonth() + 1).padStart(2, '0')}/${String(card.billDay).padStart(2, '0')}`;
+  }, [card.billDay]);
+
+  const repaymentDateStr = useMemo(() => {
+    const d = new Date(card.repaymentDate);
+    return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+  }, [card.repaymentDate]);
 
   // Find currently selected cycle object
   const currentCycle = cycles.find(c => c.key === selectedCycleKey) || cycles[0];
@@ -128,74 +143,87 @@ export const Detail: React.FC<DetailProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-gray-50 relative">
-      {/* 1. Header (Fixed/Sticky) with Dynamic Gradient */}
-      <div className={`bg-gradient-to-br ${themeGradient} sticky top-0 z-30 shadow-lg text-white safe-area-top`}>
-         <div className="p-4 pb-4 rounded-b-[2rem] pointer-events-auto relative overflow-hidden transition-colors duration-500">
-            
-            {/* Background Watermark */}
-            <div className="absolute -right-4 top-10 opacity-10 pointer-events-none select-none">
-                 <span className="text-8xl font-black">{card.bankName.substring(0,2)}</span>
-            </div>
+      {/* 1. Header (Fixed/Sticky) */}
+      <div className={`bg-gradient-to-br ${themeGradient} sticky top-0 z-30 shadow-lg text-white safe-area-top rounded-b-3xl`}>
+         <div className="p-4 pb-4">
 
-            <div className="flex items-center justify-between mb-2 relative z-10">
-               <button onClick={onBack} className="p-3 -ml-3 hover:bg-white/10 rounded-full transition backdrop-blur-sm">
+            <div className="flex items-center justify-between mb-4">
+               <button onClick={onBack} className="p-2 -ml-2 hover:bg-white/10 rounded-full transition">
                   <ArrowLeft size={24} />
                </button>
-               <h1 className="font-bold text-lg opacity-90">{card.bankName} | {card.holderName}</h1>
+               <h1 className="font-bold text-lg">{card.bankName} | {card.holderName}</h1>
                <div className="flex gap-1">
-                  <button onClick={() => onEdit(card)} className="p-2 -mr-1 hover:bg-white/10 rounded-full transition text-sm flex items-center gap-1 backdrop-blur-sm">
+                  <button onClick={() => onEdit(card)} className="p-2 hover:bg-white/10 rounded-full transition text-sm flex items-center gap-1">
                      <Edit size={16} /> 编辑
                   </button>
-                  <button onClick={() => setShowDeleteConfirm('card')} className="p-2 hover:bg-white/10 rounded-full transition backdrop-blur-sm">
+                  <button onClick={() => setShowDeleteConfirm('card')} className="p-2 hover:bg-white/10 rounded-full transition">
                      <Trash2 size={16} />
                   </button>
                </div>
             </div>
 
-            {/* Main Header Stats (Refactored Layout) */}
-            <div className="grid grid-cols-2 gap-4 mb-4 relative z-10 animate-in fade-in zoom-in-95 duration-300 px-2 mt-2">
-               {/* Left: Current Unpaid */}
-               <div className="flex flex-col relative">
-                   <div className="flex items-center gap-2 mb-1">
-                        <span className="text-white/70 text-xs">当期未还</span>
+            {/* 2. Top Data Area */}
+            <div className="flex mb-5">
+               <div className="flex-1">
+                   <div className="flex items-center gap-2 mb-2">
+                        <span className="text-white/50 text-sm">当期未还</span>
                         {repaymentInfo && (
-                           <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold backdrop-blur-md border border-white/10 ${
-                               repaymentInfo.days < 0 ? 'bg-red-500 text-white' : 'bg-white/20 text-white'
+                           <span className={`text-xs px-1.5 py-0.5 rounded ${
+                               repaymentInfo.days < 0 ? 'bg-red-500' : 'bg-white/15 text-white/70'
                            }`}>
                                {repaymentInfo.days < 0 ? `逾期${Math.abs(repaymentInfo.days)}天` : `剩${repaymentInfo.days}天`}
                            </span>
                         )}
                    </div>
-                   <span className="text-3xl font-bold tracking-tight">{formatCurrency(card.currentUnpaid)}</span>
+                   <span className="text-[40px] font-bold tracking-tight">{formatCurrency(card.currentUnpaid)}</span>
                </div>
-
-               {/* Right: Available */}
-               <div className="flex flex-col items-end relative">
-                   <span className="text-white/70 text-xs mb-1">可用额度</span>
-                   <span className="text-3xl font-bold tracking-tight">{formatCurrency(available)}</span>
+               <div className="flex-1 text-right">
+                   <span className="text-white/50 text-sm mb-2 block">可用额度</span>
+                   <span className="text-[40px] font-bold tracking-tight">{formatCurrency(available)}</span>
                </div>
             </div>
 
-            {/* Cycle Selector & Cycle Stats */}
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/10 relative z-10 animate-in slide-in-from-bottom-2 duration-500">
-                <div className="grid grid-cols-4 gap-2 text-center">
-                    <div>
-                        <p className="text-[10px] text-white/60 mb-0.5">未出账单总额</p>
-                        <p className="font-bold text-base">{formatCurrency(card.currentUnbilled)}</p>
-                    </div>
-                    <div>
-                        <p className="text-[10px] text-white/60 mb-0.5">本期消费</p>
-                        <p className="font-bold text-base">{formatCurrency(cycleStats.totalConsumption)}</p>
-                    </div>
-                    <div>
-                        <p className="text-[10px] text-white/60 mb-0.5">本期还款</p>
-                        <p className="font-bold text-base text-green-300">{formatCurrency(cycleStats.totalRepayment)}</p>
-                    </div>
-                    <div>
-                        <p className="text-[10px] text-white/60 mb-0.5">实际到账</p>
-                        <p className="font-bold text-base text-orange-200">{formatCurrency(cycleStats.actualReceipt)}</p>
-                    </div>
-                </div>
+            {/* 3. Bill Title Area */}
+            <div className="flex justify-between items-end mb-2">
+              <span className="text-white/60 text-sm">当期账单</span>
+              <span className="text-2xl font-bold">{formatCurrency(card.statementAmount)}</span>
+            </div>
+            <div className="border-t border-white/15 mb-4"></div>
+
+            {/* 4. Detail Data Area: 2x2 Grid */}
+            <div className="grid grid-cols-2 gap-y-3 gap-x-6 mb-4">
+              <div className="flex justify-between items-center">
+                <span className="text-white/50 text-sm">未出账单总额</span>
+                <span className="text-sm font-bold">{formatCurrency(card.currentUnbilled)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-white/50 text-sm">本期消费</span>
+                <span className="text-sm font-bold">{formatCurrency(cycleStats.totalConsumption)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-white/50 text-sm">本期还款</span>
+                <span className="text-sm font-bold text-green-300">{formatCurrency(cycleStats.totalRepayment)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-white/50 text-sm">实际到账</span>
+                <span className="text-sm font-bold">{formatCurrency(cycleStats.actualReceipt)}</span>
+              </div>
+            </div>
+
+            {/* 5. Bottom Info Bar */}
+            <div className="flex bg-white/10 rounded-xl py-3 px-2">
+              <div className="flex-1 text-center text-xs">
+                <span className="text-white/50">账单日 </span>
+                <span className="text-white font-bold">{billDateStr}</span>
+              </div>
+              <div className="flex-1 text-center text-xs">
+                <span className="text-white/50">还款日 </span>
+                <span className="text-white font-bold">{repaymentDateStr}</span>
+              </div>
+              <div className="flex-1 text-center text-xs">
+                <span className="text-white/50">固定额度 </span>
+                <span className="text-white font-bold">{formatCurrency(card.fixedLimit)}</span>
+              </div>
             </div>
          </div>
       </div>
@@ -205,7 +233,7 @@ export const Detail: React.FC<DetailProps> = ({
          
          {/* 2. Quick Actions */}
          <div className="mx-4 -mt-2 bg-white rounded-xl shadow-lg shadow-gray-200/50 p-4 relative z-20 mb-4 animate-in slide-in-from-bottom-4 duration-500 delay-100">
-             <div className="grid grid-cols-3 gap-2 text-center">
+             <div className="grid grid-cols-4 gap-2 text-center">
                  <button onClick={() => onQuickAction('adjust_unpaid', card)} className="flex flex-col items-center gap-2 p-1 active:bg-gray-50 rounded-lg group">
                      <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-active:scale-90 transition"><Sliders size={18}/></div>
                      <span className="text-[10px] text-gray-600 font-medium">调剩余未还</span>
@@ -218,22 +246,19 @@ export const Detail: React.FC<DetailProps> = ({
                      <div className="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center group-active:scale-90 transition"><Wallet size={18}/></div>
                      <span className="text-[10px] text-gray-600 font-medium">调可用额度</span>
                  </button>
+                 <button onClick={() => setShowInstallmentForm(true)} className="flex flex-col items-center gap-2 p-1 active:bg-gray-50 rounded-lg group">
+                     <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center group-active:scale-90 transition"><Landmark size={18}/></div>
+                     <span className="text-[10px] text-gray-600 font-medium">分期管理</span>
+                 </button>
              </div>
          </div>
          
-         {/* 3. Basic Info Cards */}
-         <div className="mx-4 grid grid-cols-2 gap-3 mb-4 animate-in slide-in-from-bottom-4 duration-500 delay-150">
-             <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
-                 <p className="text-xs text-gray-400 mb-1">固定额度</p>
-                 <p className="font-bold text-gray-800">{formatCurrency(card.fixedLimit)}</p>
-             </div>
-             <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
-                 <p className="text-xs text-gray-400 mb-1">卡号后四位</p>
-                 <p className="font-bold text-gray-800 font-mono">{card.cardNumber}</p>
-             </div>
-         </div>
+         {/* 3. Installment Plans */}
+         {<div className="mx-4 mb-4 animate-in slide-in-from-bottom-4 duration-500 delay-200">
+            <InstallmentPlanView cardId={card.id} onOpenSettlement={setSettlementTarget} />
+         </div>}
 
-         {/* 4. Transaction Records with Cycle Selector */}
+         {/* 5. Transaction Records with Cycle Selector */}
          <div className="px-4 animate-in slide-in-from-bottom-4 duration-500 delay-200">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
@@ -250,27 +275,19 @@ export const Detail: React.FC<DetailProps> = ({
                         className={`text-xs px-3 py-1.5 rounded-md font-bold transition ${filterType === 'repayment' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'}`}
                     >还款</button>
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="relative">
-                        <select 
-                            value={selectedCycleKey}
-                            onChange={(e) => setSelectedCycleKey(e.target.value)}
-                            className="appearance-none bg-white text-gray-700 text-xs font-bold pr-6 pl-3 py-2 rounded-lg outline-none cursor-pointer border border-gray-200 hover:border-blue-300 transition shadow-sm min-w-[120px]"
-                        >
-                            {cycles.map(c => (
-                                <option key={c.key} value={c.key} className="text-gray-800">
-                                    {c.label} {c.key === 'unbilled' ? '(未出)' : ''}
-                                </option>
-                            ))}
-                        </select>
-                        <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
-                    </div>
-                    <button 
-                        onClick={() => onAddTransaction(card)}
-                        className="text-xs font-bold text-white bg-blue-600 px-4 py-2 rounded-full flex items-center gap-1 shadow-md hover:bg-blue-700 active:scale-95 transition"
+                <div className="relative">
+                    <select
+                        value={selectedCycleKey}
+                        onChange={(e) => setSelectedCycleKey(e.target.value)}
+                        className="appearance-none bg-white text-gray-700 text-xs font-bold pr-6 pl-3 py-2 rounded-lg outline-none cursor-pointer border border-gray-200 hover:border-blue-300 transition shadow-sm min-w-[120px]"
                     >
-                        <PlusCircle size={14}/> 记一笔
-                    </button>
+                        {cycles.map(c => (
+                            <option key={c.key} value={c.key} className="text-gray-800">
+                                {c.label} {c.key === 'unbilled' ? '(未出)' : ''}
+                            </option>
+                        ))}
+                    </select>
+                    <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
                 </div>
             </div>
             
@@ -338,6 +355,14 @@ export const Detail: React.FC<DetailProps> = ({
          <div className="h-12"></div>
       </div>
 
+      {/* Floating Action Button - Add Transaction */}
+      <button
+        onClick={() => onAddTransaction(card)}
+        className="absolute bottom-6 right-4 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center hover:bg-blue-700 active:scale-95 transition z-20"
+      >
+        <PlusCircle size={24} />
+      </button>
+
       {/* 删除确认弹窗 */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -374,6 +399,16 @@ export const Detail: React.FC<DetailProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Installment Form Modal */}
+      {showInstallmentForm && (
+        <InstallmentForm card={card} onClose={() => setShowInstallmentForm(false)} />
+      )}
+
+      {/* Early Settlement Modal */}
+      {settlementTarget && (
+        <EarlySettlementModal plan={settlementTarget} onClose={() => setSettlementTarget(null)} />
       )}
     </div>
   );

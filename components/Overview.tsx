@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { CreditCard, GlobalStats, RepaymentStatus } from '../types';
-import { Trash2, CheckSquare, Square, X, Plus, Edit, Settings, PieChart } from 'lucide-react';
+import { Trash2, CheckSquare, Square, X, Plus, Edit, Settings, BarChart3 } from 'lucide-react';
 import { getBankTheme } from '../constants';
 import { formatRepaymentDate, calculateRemainingDays } from '../utils/date';
 import { formatCurrency } from '../utils/currency';
@@ -14,7 +14,7 @@ interface OverviewProps {
   onDeleteCard: (id: string) => void;
   onBatchDelete: (ids: string[]) => void;
   onOpenSettings?: () => void;
-  onOpenAnalysis?: () => void;
+  onOpenStatistics?: () => void;
 }
 
 export const Overview: React.FC<OverviewProps> = ({
@@ -24,7 +24,7 @@ export const Overview: React.FC<OverviewProps> = ({
     onDeleteCard,
     onBatchDelete,
     onOpenSettings,
-    onOpenAnalysis
+    onOpenStatistics
 }) => {
   const cards = useAppStore(state => state.cards);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -112,7 +112,7 @@ export const Overview: React.FC<OverviewProps> = ({
                      </>
                  ) : (
                      <>
-                        <button onClick={onOpenAnalysis} className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 active:scale-95 transition" title="账单分析"><PieChart size={20} /></button>
+                        <button onClick={onOpenStatistics} className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 active:scale-95 transition" title="统计分析"><BarChart3 size={20} /></button>
                         <button onClick={onOpenSettings} className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 active:scale-95 transition" title="数据管理"><Settings size={20} /></button>
                          {cards.length > 0 && <button onClick={() => setIsSelectionMode(true)} className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 active:scale-95 transition"><Trash2 size={20} /></button>}
                          <button onClick={onAddCard} className="p-2 rounded-full bg-white text-blue-700 shadow-md hover:bg-blue-50 active:scale-95 transition"><Plus size={20} /></button>
@@ -186,9 +186,9 @@ export const Overview: React.FC<OverviewProps> = ({
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-y-3 gap-x-4 py-3 border-t border-gray-50">
-                <div className="flex flex-col"><span className="text-[10px] text-gray-400">可用额度</span><span className="text-sm font-bold text-green-600">{formatCurrency(available)}</span></div>
+                <div className="flex flex-col"><span className="text-[10px] text-gray-400">本期账单 (未还)</span><span className="text-sm font-bold" style={{ color: '#00A651', fontWeight: 700 }}>{formatCurrency(card.currentUnpaid)}</span></div>
                 <div className="flex flex-col text-right"><span className="text-[10px] text-gray-400">固定额度</span><span className="text-sm font-bold text-gray-700">{formatCurrency(card.fixedLimit)}</span></div>
-                <div className="flex flex-col"><span className="text-[10px] text-gray-400">本期账单 (未还)</span><span className="text-sm font-bold text-gray-800">{formatCurrency(card.currentUnpaid)}</span></div>
+                <div className="flex flex-col"><span className="text-[10px] text-gray-400">可用额度</span><span className="text-sm font-bold text-gray-800">{formatCurrency(available)}</span></div>
                 <div className="flex flex-col text-right"><span className="text-[10px] text-gray-400">还款日</span><span className={`text-sm font-bold ${remainingDays < 3 ? 'text-red-500' : 'text-blue-600'}`}>{formatRepaymentDate(card.repaymentDate)} ({remainingDays > 0 ? `${remainingDays}天` : '已过'})</span></div>
               </div>
               <div className="absolute bottom-0 left-0 h-1 bg-gray-100 w-full">
