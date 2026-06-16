@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "sync": "npx cap sync",
+    "sync:dev": "npx cap sync --config capacitor.config.dev.ts",
     "test": "vitest run"
   },
   "dependencies": {

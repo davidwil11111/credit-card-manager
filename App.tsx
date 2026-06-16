@@ -302,13 +302,29 @@ const App: React.FC = () => {
     const fileName = `cc_manager_backup_${new Date().toISOString().split('T')[0]}`;
     const jsonStr = await database.exportToJson();
 
+    // Debug: verify jsonStr content on JS side
+    logger.info('handleExportData: jsonStr length =', jsonStr.length);
+    logger.info('handleExportData: jsonStr starts with =', jsonStr.substring(0, 50));
+    try {
+      JSON.parse(jsonStr);
+      logger.info('handleExportData: jsonStr is parseable JSON');
+    } catch (e) {
+      logger.error('handleExportData: jsonStr is NOT parseable JSON!', e);
+    }
+
     if (Capacitor.isNativePlatform()) {
       try {
+        // Write as base64 to avoid encoding issues with Capacitor Filesystem
+        const bytes = new TextEncoder().encode(jsonStr);
+        const parts: string[] = [];
+        for (let i = 0; i < bytes.length; i += 4096) {
+          parts.push(String.fromCharCode(...bytes.subarray(i, i + 4096)));
+        }
+        const base64Data = btoa(parts.join(''));
         const result = await Filesystem.writeFile({
           path: fileName + '.json',
-          data: jsonStr,
+          data: base64Data,
           directory: Directory.Documents,
-          encoding: Encoding.UTF8,
         });
         const verify = await Filesystem.readFile({
           path: fileName + '.json',
@@ -316,9 +332,12 @@ const App: React.FC = () => {
           encoding: Encoding.UTF8,
         });
         const vStr = typeof verify.data === 'string' ? verify.data : '';
+        logger.info('handleExportData: read-back length =', vStr.length);
+        logger.info('handleExportData: read-back first 50 chars =', vStr.substring(0, 50));
         if (vStr.startsWith('{')) {
           alert('备份已保存: Documents/' + fileName + '.json');
         } else {
+          logger.error('handleExportData: read-back content mismatch!');
           alert('导出文件异常，请重试');
         }
       } catch (error: any) {

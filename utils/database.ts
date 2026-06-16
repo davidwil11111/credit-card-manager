@@ -522,7 +522,11 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
     const posMachines = await this.getAllPosMachines();
     const installmentPlans = await this.getAllInstallmentPlans();
 
-    return JSON.stringify(
+    logger.info('exportToJson: cards count =', cards.length);
+    logger.info('exportToJson: posMachines count =', posMachines.length);
+    logger.info('exportToJson: installmentPlans count =', installmentPlans.length);
+
+    const json = JSON.stringify(
       {
         version: '1.0',
         exportedAt: new Date().toISOString(),
@@ -533,6 +537,16 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
       null,
       2
     );
+
+    // Verify the output is valid JSON
+    try {
+      JSON.parse(json);
+      logger.info('exportToJson: output is valid JSON, first 200 chars:', json.substring(0, 200));
+    } catch (e) {
+      logger.error('exportToJson: output is NOT valid JSON!', e);
+    }
+
+    return json;
   }
 
   async importFromJson(jsonString: string): Promise<void> {
