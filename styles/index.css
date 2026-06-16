@@ -2,6 +2,73 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Brand Colors (Overview) */
+:root {
+  --brand-primary: #3A7CFE;
+  --brand-bg: #F7F8FA;
+  --brand-dark: #1A1A1A;
+  --brand-red: #F5222D;
+  --brand-green: #52C41A;
+  --brand-orange: #FA8C16;
+  --brand-outline: #999999;
+  --detail-primary: #0040e0;
+  --detail-header-start: #124af0;
+  --detail-header-end: #306eff;
+}
+
+/* Custom Gradients */
+.gradient-blue {
+  background: linear-gradient(135deg, #3A7CFE 0%, #2563EB 100%);
+}
+.bg-detail-header {
+  background: linear-gradient(180deg, #124af0 0%, #306eff 100%);
+}
+.bg-navy-bar {
+  background: rgba(0, 35, 120, 0.4);
+}
+
+/* Shadows */
+.shadow-soft {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+/* Status Colors */
+.status-badge-pending {
+  background-color: #EBF2FF;
+  color: #3A7CFE;
+}
+.status-badge-overdue {
+  background-color: #FFF1F0;
+  color: #F5222D;
+}
+.status-badge-done {
+  background-color: #F0F9F4;
+  color: #52C41A;
+}
+.warning-bg-light {
+  background-color: #FFF1F0;
+  color: #F5222D;
+}
+.warning-bg-orange {
+  background-color: #FFF7E6;
+  color: #FA8C16;
+}
+.success-bg-light {
+  background-color: #F6FFED;
+  color: #52C41A;
+}
+
+/* Font utilities */
+.font-hanken {
+  font-family: 'Hanken Grotesk', sans-serif;
+}
+.font-manrope {
+  font-family: 'Manrope', sans-serif;
+}
+.font-inter {
+  font-family: 'Inter', sans-serif;
+}
+
 /* Safe area utilities for Capacitor */
 .safe-area-top {
   padding-top: env(safe-area-inset-top, 0px);

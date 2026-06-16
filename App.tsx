@@ -6,7 +6,7 @@ import { Statistics } from './components/Statistics';
 import { CreditCardForm } from './components/CreditCardForm';
 import { TransactionForm } from './components/TransactionForm';
 import { SplashScreen } from './components/SplashScreen';
-import { ConfirmModal, InputModal, SettingsModal, BackupManagementModal } from './components/ui/Modal';
+import { ConfirmModal, InputModal, SettingsModal, BackupManagementModal, TempLimitModal } from './components/ui/Modal';
 import { LogViewer } from './components/LogViewer';
 import { CreditCard, Transaction, POSMachine } from './types';
 import { clampDayToMonth } from './constants';
@@ -37,6 +37,7 @@ const App: React.FC = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [backupManagementOpen, setBackupManagementOpen] = useState(false);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
+  const [tempLimitDialog, setTempLimitDialog] = useState<{isOpen: boolean; card: CreditCard | null}>({ isOpen: false, card: null });
 
   const [swipeOffset, setSwipeOffset] = useState(0);
   const swipeRef = useRef({ startX: 0, startY: 0, isTracking: false });
@@ -221,6 +222,10 @@ const App: React.FC = () => {
     if (action === 'adjust_unpaid') { title = '调整欠款'; label = '本期未还金额'; defaultValue = card.currentUnpaid.toString(); field = 'currentUnpaid'; }
     else if (action === 'adjust_limit') { title = '调整额度'; label = '固定额度'; defaultValue = card.fixedLimit.toString(); field = 'fixedLimit'; }
     else if (action === 'adjust_available') { title = '调整可用'; label = '可用额度'; defaultValue = (card.fixedLimit - card.currentUnpaid - card.currentUnbilled).toString(); field = 'available_logic'; }
+    else if (action === 'adjust_temp_limit') {
+      setTempLimitDialog({ isOpen: true, card });
+      return;
+    }
 
     setInputDialog({ isOpen: true, title, label, defaultValue, onConfirm: async (val) => {
       const num = parseFloat(val); 
@@ -402,6 +407,17 @@ const App: React.FC = () => {
         defaultValue={inputDialog.defaultValue} 
         onConfirm={inputDialog.onConfirm} 
         onClose={() => setInputDialog(p => ({ ...p, isOpen: false }))} 
+      />
+      <TempLimitModal
+        isOpen={tempLimitDialog.isOpen}
+        defaultAmount={tempLimitDialog.card?.tempLimit || 0}
+        defaultExpiry={tempLimitDialog.card?.tempLimitExpiry || ''}
+        onConfirm={async (amount, expiry) => {
+          if (!tempLimitDialog.card) return;
+          const up = { ...tempLimitDialog.card, tempLimit: amount, tempLimitExpiry: expiry };
+          await saveData(cards.map(c => c.id === up.id ? up : c));
+        }}
+        onClose={() => setTempLimitDialog({ isOpen: false, card: null })}
       />
       <SettingsModal 
         isOpen={settingsOpen} 

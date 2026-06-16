@@ -97,6 +97,17 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       let hasChanges = false;
       const updatedCards = currentCards.map(card => {
+        // Check temp limit expiry
+        let updatedCard = { ...card };
+        if (card.tempLimit > 0 && card.tempLimitExpiry) {
+          const expiryDate = new Date(card.tempLimitExpiry);
+          expiryDate.setHours(0, 0, 0, 0);
+          if (now > expiryDate) {
+            updatedCard = { ...updatedCard, tempLimit: 0, tempLimitExpiry: undefined };
+            hasChanges = true;
+          }
+        }
+
         const currentMonthBillDate = new Date(now.getFullYear(), now.getMonth(), clampDayToMonth(now.getFullYear(), now.getMonth(), card.billDay));
         currentMonthBillDate.setHours(0, 0, 0, 0);
 
@@ -113,7 +124,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           hasChanges = true;
           const newUnpaid = card.currentUnpaid + card.currentUnbilled;
           return {
-            ...card,
+            ...updatedCard,
             statementAmount: newUnpaid,
             currentUnpaid: newUnpaid,
             currentUnbilled: 0,
@@ -121,7 +132,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             repaymentDate: calculateRepaymentDateForBill(latestRelevantBillDate, card.repaymentConfig),
           };
         }
-        return card;
+        return updatedCard;
       });
 
       if (hasChanges) {

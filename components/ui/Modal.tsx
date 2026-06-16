@@ -102,6 +102,67 @@ export const InputModal: React.FC<InputModalProps> = ({ isOpen, title, label, de
     );
 };
 
+interface TempLimitModalProps {
+    isOpen: boolean;
+    onConfirm: (amount: number, expiry: string) => void;
+    onClose: () => void;
+    defaultAmount?: number;
+    defaultExpiry?: string;
+}
+
+export const TempLimitModal: React.FC<TempLimitModalProps> = ({
+    isOpen,
+    onConfirm,
+    onClose,
+    defaultAmount = 0,
+    defaultExpiry = ''
+}) => {
+    const [amount, setAmount] = React.useState('');
+    const [expiry, setExpiry] = React.useState('');
+    useEffect(() => {
+        if (isOpen) {
+            setAmount(defaultAmount > 0 ? String(defaultAmount) : '');
+            setExpiry(defaultExpiry || '');
+        }
+    }, [isOpen, defaultAmount, defaultExpiry]);
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const num = parseFloat(amount);
+        if (isNaN(num) || num <= 0) return;
+        onConfirm(num, expiry);
+        onClose();
+    };
+
+    return (
+        <BaseModal isOpen={isOpen} title="临时额度" onClose={onClose}>
+            <form onSubmit={handleSubmit}>
+                <label className="block text-xs font-bold text-gray-500 mb-2">金额</label>
+                <input
+                    autoFocus
+                    type="number"
+                    step="0.01"
+                    placeholder="输入临时额度金额"
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none mb-4"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                />
+                <label className="block text-xs font-bold text-gray-500 mb-2">有效期至</label>
+                <input
+                    type="date"
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-base text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none mb-6"
+                    value={expiry}
+                    onChange={(e) => setExpiry(e.target.value)}
+                />
+                <div className="flex gap-3">
+                    <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-medium text-sm hover:bg-gray-50">取消</button>
+                    <button type="submit" disabled={!amount || !expiry} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 shadow-md shadow-blue-500/20 disabled:opacity-50">确认</button>
+                </div>
+            </form>
+        </BaseModal>
+    );
+};
+
 interface ExportChoiceModalProps {
     isOpen: boolean;
     onClose: () => void;

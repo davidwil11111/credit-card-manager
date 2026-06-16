@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#124af0"/>
+      <stop offset="50%" stop-color="#0040e0"/>
+      <stop offset="100%" stop-color="#2e5bff"/>
+    </linearGradient>
+    <linearGradient id="cardShine" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.15)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#bg)"/>
+
+  <!-- Credit card body -->
+  <rect x="100" y="180" rx="28" ry="28" width="312" height="200" fill="rgba(255,255,255,0.95)"/>
+
+  <!-- Card chip -->
+  <rect x="140" y="210" rx="8" ry="8" width="48" height="36" fill="#dde1ff" stroke="#b8c3ff" stroke-width="2"/>
+  <rect x="148" y="216" rx="3" ry="3" width="12" height="12" fill="#0040e0" opacity="0.4"/>
+  <rect x="164" y="216" rx="3" ry="3" width="12" height="12" fill="#0040e0" opacity="0.4"/>
+  <rect x="148" y="230" rx="3" ry="3" width="12" height="12" fill="#0040e0" opacity="0.4"/>
+  <rect x="164" y="230" rx="3" ry="3" width="12" height="12" fill="#0040e0" opacity="0.4"/>
+
+  <!-- Contactless icon -->
+  <path d="M210 228 C220 218 236 218 246 228" fill="none" stroke="#0040e0" stroke-width="3" stroke-linecap="round"/>
+  <path d="M204 222 C214 208 232 208 244 222" fill="none" stroke="#0040e0" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M198 216 C210 198 236 198 250 216" fill="none" stroke="#0040e0" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+
+  <!-- Card detail lines (amount placeholder) -->
+  <rect x="140" y="280" rx="4" ry="4" width="160" height="14" fill="#e2e1ef"/>
+  <rect x="140" y="304" rx="4" ry="4" width="100" height="14" fill="#e2e1ef"/>
+
+  <!-- Card brand mark (right side) -->
+  <circle cx="360" cy="340" r="28" fill="#0040e0"/>
+  <circle cx="384" cy="340" r="28" fill="#ffdad6" opacity="0.7"/>
+
+  <!-- Overlapping decorative elements -->
+  <circle cx="430" cy="420" r="60" fill="url(#cardShine)" opacity="0.3"/>
+  <circle cx="80" cy="120" r="40" fill="url(#cardShine)" opacity="0.2"/>
+
+  <!-- Bottom label area -->
+  <text x="256" y="440" text-anchor="middle" font-family="'Hanken Grotesk','Inter',sans-serif" font-size="22" font-weight="700" fill="#ffffff" letter-spacing="2">
+    信用卡管家
+  </text>
+</svg>

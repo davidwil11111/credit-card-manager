@@ -29,7 +29,7 @@ export const MOCK_BANKS = [
 ];
 export const MOCK_NAMES = ['张三', '李四', '王五', '赵六'];
 
-// Helper to get bank brand colors
+// Helper to get bank brand colors (gradient for headers)
 export const getBankTheme = (bankName: string) => {
     if (bankName.includes('招商') || bankName.includes('招行')) return 'from-red-600 to-rose-700';
     if (bankName.includes('工商') || bankName.includes('工行')) return 'from-red-600 to-orange-600';
@@ -48,6 +48,114 @@ export const getBankTheme = (bankName: string) => {
     
     // Default
     return 'from-slate-600 to-slate-800';
+};
+
+// Check if temp limit is currently valid
+export const isTempLimitValid = (card: CreditCard): boolean => {
+    if (!card.tempLimit || card.tempLimit <= 0) return false;
+    if (!card.tempLimitExpiry) return true; // no expiry set, assume valid
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expiry = new Date(card.tempLimitExpiry);
+    expiry.setHours(0, 0, 0, 0);
+    return expiry >= today;
+};
+export const getBankDetailGradient = (bankName: string): { start: string; end: string } => {
+    if (bankName.includes('招商') || bankName.includes('招行')) return { start: '#c62828', end: '#ef5350' };
+    if (bankName.includes('工商') || bankName.includes('工行')) return { start: '#c62828', end: '#f57c00' };
+    if (bankName.includes('建设') || bankName.includes('建行')) return { start: '#10439f', end: '#3b82f6' };
+    if (bankName.includes('农业') || bankName.includes('农行')) return { start: '#0d7c63', end: '#34d399' };
+    if (bankName.includes('中国银行')) return { start: '#991b1b', end: '#ef4444' };
+    if (bankName.includes('交通') || bankName.includes('交行')) return { start: '#1e40af', end: '#6366f1' };
+    if (bankName.includes('平安')) return { start: '#c2410c', end: '#f97316' };
+    if (bankName.includes('中信')) return { start: '#b91c1c', end: '#f87171' };
+    if (bankName.includes('光大')) return { start: '#a16207', end: '#facc15' };
+    if (bankName.includes('浦发')) return { start: '#00338d', end: '#4a8af4' };
+    if (bankName.includes('民生')) return { start: '#007f7e', end: '#2dd4bf' };
+    if (bankName.includes('兴业')) return { start: '#1d4ed8', end: '#60a5fa' };
+    if (bankName.includes('广发')) return { start: '#b91c1c', end: '#f472b6' };
+    if (bankName.includes('邮储')) return { start: '#166534', end: '#4ade80' };
+    if (bankName.includes('华夏')) return { start: '#1e40af', end: '#60a5fa' };
+    if (bankName.includes('北京')) return { start: '#991b1b', end: '#f87171' };
+    if (bankName.includes('上海')) return { start: '#1e40af', end: '#60a5fa' };
+    return { start: '#124af0', end: '#306eff' };
+};
+
+// Helper to get bank solid color for circle avatars (inner)
+export const getBankColor = (bankName: string): string => {
+    if (bankName.includes('招商') || bankName.includes('招行')) return '#E60012';
+    if (bankName.includes('工商') || bankName.includes('工行')) return '#C8102E';
+    if (bankName.includes('建设') || bankName.includes('建行')) return '#005BAC';
+    if (bankName.includes('农业') || bankName.includes('农行')) return '#00897B';
+    if (bankName.includes('中国银行')) return '#AD1D21';
+    if (bankName.includes('交通') || bankName.includes('交行')) return '#005BAC';
+    if (bankName.includes('平安')) return '#EA5504';
+    if (bankName.includes('中信')) return '#C8102E';
+    if (bankName.includes('光大')) return '#7B2D8B';
+    if (bankName.includes('浦发')) return '#00338D';
+    if (bankName.includes('民生')) return '#007F7E';
+    if (bankName.includes('兴业')) return '#005BAC';
+    if (bankName.includes('广发')) return '#CE0037';
+    if (bankName.includes('邮储')) return '#008000';
+    if (bankName.includes('华夏')) return '#005BAC';
+    if (bankName.includes('北京')) return '#C8102E';
+    if (bankName.includes('上海')) return '#005BAC';
+    if (bankName.includes('恒丰')) return '#3F51B5';
+    if (bankName.includes('浙商')) return '#005BAC';
+    if (bankName.includes('渤海')) return '#00897B';
+    return '#4B5563';
+};
+
+// Helper to get bank avatar outer ring color (Tailwind bg class)
+export const getBankAvatarOuter = (bankName: string): string => {
+    if (bankName.includes('招商') || bankName.includes('招行')) return 'bg-red-50';
+    if (bankName.includes('工商') || bankName.includes('工行')) return 'bg-red-50';
+    if (bankName.includes('建设') || bankName.includes('建行')) return 'bg-blue-50';
+    if (bankName.includes('农业') || bankName.includes('农行')) return 'bg-emerald-50';
+    if (bankName.includes('中国银行')) return 'bg-red-50';
+    if (bankName.includes('交通') || bankName.includes('交行')) return 'bg-blue-50';
+    if (bankName.includes('平安')) return 'bg-orange-50';
+    if (bankName.includes('中信')) return 'bg-red-50';
+    if (bankName.includes('光大')) return 'bg-purple-50';
+    if (bankName.includes('浦发')) return 'bg-blue-50';
+    if (bankName.includes('民生')) return 'bg-teal-50';
+    if (bankName.includes('兴业')) return 'bg-blue-50';
+    if (bankName.includes('广发')) return 'bg-red-50';
+    if (bankName.includes('邮储')) return 'bg-green-50';
+    if (bankName.includes('华夏')) return 'bg-blue-50';
+    if (bankName.includes('北京')) return 'bg-red-50';
+    if (bankName.includes('上海')) return 'bg-blue-50';
+    if (bankName.includes('恒丰')) return 'bg-indigo-50';
+    if (bankName.includes('浙商')) return 'bg-blue-50';
+    if (bankName.includes('渤海')) return 'bg-emerald-50';
+    return 'bg-gray-50';
+};
+
+// Calculate monthly spend (calendar month) for all cards
+export const getMonthlySpend = (cards: CreditCard[]): { current: number; previous: number } => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    let current = 0;
+    let previous = 0;
+    
+    cards.forEach(card => {
+        card.transactions.forEach(tx => {
+            if (tx.type !== 'consumption') return;
+            const txDate = new Date(tx.date);
+            const amount = Math.abs(tx.amount);
+            
+            if (txDate.getFullYear() === currentYear && txDate.getMonth() === currentMonth) {
+                current += amount;
+            } else if (txDate.getFullYear() === currentYear && txDate.getMonth() === currentMonth - 1 ||
+                       (currentMonth === 0 && txDate.getFullYear() === currentYear - 1 && txDate.getMonth() === 11)) {
+                previous += amount;
+            }
+        });
+    });
+    
+    return { current, previous };
 };
 
 export const DEFAULT_POS_MACHINES: POSMachine[] = [
