@@ -17,7 +17,6 @@ import { notifications } from './utils/notifications';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
-import { Share } from '@capacitor/share';
 
 const App: React.FC = () => {
   const [view, setView] = useState<'overview' | 'detail' | 'form' | 'statistics'>('overview');
@@ -143,17 +142,24 @@ const App: React.FC = () => {
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
-        const jsonString = e.target?.result as string;
+        const buf = e.target?.result as ArrayBuffer;
+        if (!buf || buf.byteLength === 0) { alert('文件为空'); return; }
+        const jsonString = new TextDecoder('utf-8').decode(buf);
+        if (!jsonString.startsWith('{') && !jsonString.startsWith('[')) {
+          alert('不是有效的JSON备份文件，请重新导出。');
+          return;
+        }
         await database.importFromJson(jsonString);
         await loadFromDatabase();
         setSettingsOpen(false);
         alert('数据恢复成功！');
-      } catch (err) { 
-        logger.error('Import data failed:', err);
-        alert('导入失败: ' + (err as Error).message);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err || '');
+        logger.error('Import failed:', msg);
+        alert('导入失败: ' + (msg || '未知错误'));
       }
     };
-    reader.readAsText(file);
+    reader.readAsArrayBuffer(file);
   };
 
   useEffect(() => {
@@ -299,14 +305,19 @@ const App: React.FC = () => {
           directory: Directory.Documents,
           encoding: Encoding.UTF8,
         });
-
-        await Share.share({
-          title: '信用卡管家备份数据',
-          text: '信用卡管家数据备份（含完整交易流水）',
-          files: [result.uri],
+        const verify = await Filesystem.readFile({
+          path: fileName + '.json',
+          directory: Directory.Documents,
+          encoding: Encoding.UTF8,
         });
+        const vStr = typeof verify.data === 'string' ? verify.data : '';
+        if (vStr.startsWith('{')) {
+          alert('备份已保存: Documents/' + fileName + '.json');
+        } else {
+          alert('导出文件异常，请重试');
+        }
       } catch (error: any) {
-        logger.error('Export share failed:', error);
+        logger.error('Export failed:', error);
         alert('导出失败：' + (error?.message || error?.toString?.() || '请重试'));
       }
     } else {
