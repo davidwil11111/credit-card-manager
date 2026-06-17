@@ -131,6 +131,31 @@ export const getBankAvatarOuter = (bankName: string): string => {
     return 'bg-gray-50';
 };
 
+// Get Material Symbol icon name for each bank
+export const getBankIcon = (bankName: string): string => {
+    if (bankName.includes('招商') || bankName.includes('招行')) return 'account_balance';
+    if (bankName.includes('工商') || bankName.includes('工行')) return 'savings';
+    if (bankName.includes('建设') || bankName.includes('建行')) return 'home';
+    if (bankName.includes('农业') || bankName.includes('农行')) return 'eco';
+    if (bankName.includes('中国银行')) return 'tower';
+    if (bankName.includes('交通') || bankName.includes('交行')) return 'commute';
+    if (bankName.includes('平安')) return 'shield';
+    if (bankName.includes('中信')) return 'credit_card';
+    if (bankName.includes('光大')) return 'light';
+    if (bankName.includes('浦发')) return 'bolt';
+    if (bankName.includes('民生')) return 'volunteer_activism';
+    if (bankName.includes('兴业')) return 'trending_up';
+    if (bankName.includes('广发')) return 'globe_asia';
+    if (bankName.includes('邮储')) return 'local_shipping';
+    if (bankName.includes('华夏')) return 'diamond';
+    if (bankName.includes('北京')) return 'location_city';
+    if (bankName.includes('上海')) return 'water';
+    if (bankName.includes('恒丰')) return 'stars';
+    if (bankName.includes('浙商')) return 'storefront';
+    if (bankName.includes('渤海')) return 'anchor';
+    return 'account_balance_wallet';
+};
+
 // Calculate monthly spend (calendar month) for all cards
 export const getMonthlySpend = (cards: CreditCard[]): { current: number; previous: number } => {
     const now = new Date();

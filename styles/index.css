@@ -5,7 +5,7 @@
 /* Brand Colors (Overview) */
 :root {
   --brand-primary: #3A7CFE;
-  --brand-bg: #F7F8FA;
+  --brand-bg: #fdf7ff;
   --brand-dark: #1A1A1A;
   --brand-red: #F5222D;
   --brand-green: #52C41A;
@@ -17,8 +17,8 @@
 }
 
 /* Custom Gradients */
-.gradient-blue {
-  background: linear-gradient(135deg, #3A7CFE 0%, #2563EB 100%);
+.main-card-gradient {
+  background: radial-gradient(circle at 80% 50%, rgba(255, 180, 100, 0.3), transparent 45%), linear-gradient(135deg, rgb(30, 58, 138) 0%, rgb(37, 99, 235) 35%, rgb(109, 40, 217) 75%, rgb(157, 23, 77) 100%);
 }
 .bg-detail-header {
   background: linear-gradient(180deg, #124af0 0%, #306eff 100%);
@@ -29,7 +29,24 @@
 
 /* Shadows */
 .shadow-soft {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+.card-light-bg {
+  background-color: #ffffff;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+.reminder-gradient-red {
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+}
+.progress-red {
+  background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
+}
+.progress-blue-gradient {
+  background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
+}
+.glass-effect {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
 }
 
 /* Status Colors */
