@@ -132,6 +132,23 @@ export const useAppStore = create<AppState>((set, get) => ({
             repaymentDate: calculateRepaymentDateForBill(latestRelevantBillDate, card.repaymentConfig),
           };
         }
+
+        // Card is fully paid but repayment date is in the past: advance repayment date to next cycle
+        if (updatedCard.currentUnpaid < 0.001) {
+          const rDate = new Date(updatedCard.repaymentDate);
+          rDate.setHours(0, 0, 0, 0);
+          if (now > rDate) {
+            hasChanges = true;
+            const nextBillDate = new Date(latestRelevantBillDate);
+            nextBillDate.setMonth(nextBillDate.getMonth() + 1);
+            nextBillDate.setDate(clampDayToMonth(nextBillDate.getFullYear(), nextBillDate.getMonth(), card.billDay));
+            nextBillDate.setHours(0, 0, 0, 0);
+            updatedCard = {
+              ...updatedCard,
+              repaymentDate: calculateRepaymentDateForBill(nextBillDate, card.repaymentConfig),
+            };
+          }
+        }
         return updatedCard;
       });
 
@@ -191,6 +208,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
 
     await get().saveData(newCards);
+    const paidOff = newCards.some(c => c.currentUnpaid <= 0 && cards.find(oc => oc.id === c.id)?.currentUnpaid !== 0);
+    if (paidOff) { setTimeout(() => get().processBillingLogic(), 500); }
   },
 
   handleDeleteTransaction: async (card, txId) => {
@@ -213,6 +232,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       return up;
     });
     await get().saveData(newCards);
+    const paidOff = newCards.some(c => c.currentUnpaid <= 0 && cards.find(oc => oc.id === c.id)?.currentUnpaid !== 0);
+    if (paidOff) { setTimeout(() => get().processBillingLogic(), 500); }
   },
 
   handleUpdatePOS: async (machines) => {
