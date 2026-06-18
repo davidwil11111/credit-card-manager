@@ -1,13 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
 interface SplashScreenProps {
   onComplete: () => void;
+  isReady: boolean;
 }
 
-export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
+export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete, isReady }) => {
   const [isVisible, setIsVisible] = useState(true);
   const [textVisible, setTextVisible] = useState(false);
   const [subtitleVisible, setSubtitleVisible] = useState(false);
+  const minElapsed = useRef(false);
+  const completed = useRef(false);
 
   useEffect(() => {
     const textTimer = setTimeout(() => {
@@ -18,21 +21,35 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       setSubtitleVisible(true);
     }, 600);
 
-    const fadeOutTimer = setTimeout(() => {
-      setIsVisible(false);
+    const minTimer = setTimeout(() => {
+      minElapsed.current = true;
+      // If init is already done, dismiss immediately
+      if (isReady && !completed.current) {
+        dismiss();
+      }
     }, 2000);
-
-    const completeTimer = setTimeout(() => {
-      onComplete();
-    }, 2500);
 
     return () => {
       clearTimeout(textTimer);
       clearTimeout(subtitleTimer);
-      clearTimeout(fadeOutTimer);
-      clearTimeout(completeTimer);
+      clearTimeout(minTimer);
     };
-  }, [onComplete]);
+  }, []);
+
+  // Trigger dismiss when isReady becomes true after minDuration
+  useEffect(() => {
+    if (isReady && minElapsed.current && !completed.current) {
+      dismiss();
+    }
+  }, [isReady]);
+
+  const dismiss = () => {
+    completed.current = true;
+    setIsVisible(false);
+    setTimeout(() => {
+      onComplete();
+    }, 500); // matches CSS transition duration
+  };
 
   return (
     <div 

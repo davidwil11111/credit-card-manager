@@ -356,12 +356,8 @@ const App: React.FC = () => {
     }
   };
 
-  if (showSplash) {
-    return <SplashScreen onComplete={() => setShowSplash(false)} />;
-  }
-
-  if (!isInitialized) {
-    return <div className="w-full h-screen flex items-center justify-center bg-gray-100">加载中...</div>;
+  if (showSplash || !isInitialized) {
+    return <SplashScreen onComplete={() => setShowSplash(false)} isReady={isInitialized} />;
   }
 
   return (
