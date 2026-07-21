@@ -1,6 +1,7 @@
 
 import { CreditCard, Transaction, RepaymentStatus, POSMachine } from './types';
 import { toDateString } from './utils/date';
+import { calculateNextRepaymentDate, calculateCardStatus } from './utils/billing';
 export { clampDayToMonth, getTxLastBillDate, calculateCardStatus, calculateRepaymentDateForBill, calculateNextRepaymentDate, getStatementRange, generateBillingCycles } from './utils/billing';
 export type { BillCycle, RepaymentConfig, CardStatus } from './utils/billing';
 
@@ -207,6 +208,27 @@ export const DEFAULT_POS_MACHINES: POSMachine[] = [
   { id: 'pos_3', name: '大额专用POS', rate: 0.005, fixedFee: 0 },
   { id: 'pos_4', name: '线上快捷支付', rate: 0.0038, fixedFee: 0 },
 ];
+
+const generateTransactions = (count: number): Transaction[] => {
+  const txs: Transaction[] = [];
+  for (let i = 0; i < count; i++) {
+    const isExpense = Math.random() > 0.3;
+    const amount = Math.floor(Math.random() * 5000) + 100;
+
+    txs.push({
+      id: `tx-${Math.random().toString(36).substr(2, 9)}`,
+      date: new Date(Date.now() - Math.floor(Math.random() * 60) * 24 * 60 * 60 * 1000).toISOString(),
+      amount: isExpense ? -amount : amount,
+      channel: isExpense ? (Math.random() > 0.5 ? '线上支付' : 'POS机刷卡') : '手机银行',
+      merchantType: isExpense ? '通用消费' : '还款',
+      cost: isExpense ? Math.floor(amount * 0.006) : 0,
+      actualReceipt: isExpense ? amount : 0,
+      notes: isExpense ? '日常消费' : '本期还款',
+      type: isExpense ? 'consumption' : 'repayment',
+    });
+  }
+  return txs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+};
 
 export const generateMockCards = (count: number): CreditCard[] => {
   return Array.from({ length: count }).map((_, idx) => {

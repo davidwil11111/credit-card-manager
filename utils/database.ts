@@ -86,7 +86,11 @@ class Database {
         await this.createTables();
         await this.migrateIfNeeded();
       } else {
-        await CapacitorSQLite.initWebStore();
+        try {
+          await CapacitorSQLite.initWebStore();
+        } catch (webStoreError) {
+          logger.warn('WebStore init failed, using localStorage fallback:', webStoreError);
+        }
       }
       this.loadAutoBackups();
       this.initialized = true;
