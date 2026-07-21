@@ -42,3 +42,6 @@ credit_card_manager_*.json
 convert-old-export.js
 design UI/
 .aider*
+.mimocode/
+.temp_debug.txt
+_distill_query*.py
