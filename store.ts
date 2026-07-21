@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { CreditCard, Transaction, POSMachine, InstallmentPlan } from './types';
-import { calculateCardStatus, getStatementRange, getTxLastBillDate, calculateRepaymentDateForBill, DEFAULT_POS_MACHINES, generateMockCards, clampDayToMonth } from './constants';
+import { DEFAULT_POS_MACHINES, generateMockCards } from './constants';
+import { calculateCardStatus, getStatementRange, getTxLastBillDate, calculateRepaymentDateForBill, clampDayToMonth } from './utils/billing';
 import { calculateInstallmentPlan, generateInstallmentTransactions, calculateEarlySettlement } from './utils/installment';
 import { database } from './utils/database';
 import { logger } from './utils/logger';

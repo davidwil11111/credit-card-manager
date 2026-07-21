@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { CreditCard, GlobalStats } from '../types';
+import { CreditCard } from '../types';
 import { CheckSquare, Square } from 'lucide-react';
-import { getBankColor, getBankIcon, getMonthlySpend, isTempLimitValid } from '../constants';
+import { getBankColor, getBankIcon, getMonthlySpend } from '../constants';
 import { formatRepaymentDate, calculateRemainingDays } from '../utils/date';
 import { formatCurrency } from '../utils/currency';
 import { useAppStore } from '../store';
+import { useStats } from '../hooks/useStats';
+import { calculateCardAvailable, calculateCardAvailableRatio } from '../services/statsService';
 
 interface OverviewProps {
   onSelectCard: (card: CreditCard) => void;
@@ -33,18 +35,7 @@ export const Overview: React.FC<OverviewProps> = ({
   const [sortType, setSortType] = useState<'date' | 'limit' | 'unpaid'>('date');
   const [showSortMenu, setShowSortMenu] = useState(false);
 
-  const stats: GlobalStats = useMemo(() => {
-    let totalLimit = 0, totalUnpaid = 0, totalUnbilled = 0, overdueCount = 0;
-    cards.forEach(card => {
-      totalLimit += card.fixedLimit + (isTempLimitValid(card) ? card.tempLimit : 0);
-      totalUnpaid += card.currentUnpaid;
-      totalUnbilled += card.currentUnbilled;
-      if (card.status === 'overdue') overdueCount++;
-    });
-    const totalAvailable = totalLimit - totalUnpaid - totalUnbilled;
-    const availableRatio = totalLimit > 0 ? (totalAvailable / totalLimit) * 100 : 0;
-    return { totalAvailable, totalUnpaid, totalLimit, totalUnbilled, availableRatio, overdueCount };
-  }, [cards]);
+  const stats = useStats();
 
   const monthlySpend = useMemo(() => getMonthlySpend(cards), [cards]);
   const spendChangePercent = monthlySpend.previous > 0 ? ((monthlySpend.current - monthlySpend.previous) / monthlySpend.previous) * 100 : null;
@@ -145,8 +136,8 @@ export const Overview: React.FC<OverviewProps> = ({
         </section>
         <section className="space-y-4"><div className="flex justify-between items-center pt-2"><h2 className="text-lg font-semibold text-slate-900">我的信用卡 <span className="text-slate-400 text-xs font-normal">({cards.length}张)</span></h2><div className="relative"><button onClick={()=>setShowSortMenu(!showSortMenu)} className="text-xs text-slate-500 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-black/5 transition-colors font-medium">排列顺序<svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></button>{showSortMenu&&(<><div className="fixed inset-0 z-10" onClick={()=>setShowSortMenu(false)}></div><div className="absolute right-0 top-8 z-20 bg-white rounded-xl shadow-xl border py-1 min-w-[120px]"><button onClick={()=>{setSortType('date');setShowSortMenu(false);}} className={'block w-full text-left px-4 py-2 text-xs hover:bg-gray-50 '+(sortType==='date'?'font-bold':'')}>按还款日排序</button><button onClick={()=>{setSortType('unpaid');setShowSortMenu(false);}} className={'block w-full text-left px-4 py-2 text-xs hover:bg-gray-50 '+(sortType==='unpaid'?'font-bold':'')}>按欠款额排序</button><button onClick={()=>{setSortType('limit');setShowSortMenu(false);}} className={'block w-full text-left px-4 py-2 text-xs hover:bg-gray-50 '+(sortType==='limit'?'font-bold':'')}>按额度排序</button></div></>)}</div></div>
           {sortedCards.map(card => {
-            const available = card.fixedLimit + (isTempLimitValid(card) ? card.tempLimit : 0) - card.currentUnpaid - card.currentUnbilled;
-            const availablePercent = card.fixedLimit > 0 ? (available / card.fixedLimit) * 100 : 0;
+            const available = calculateCardAvailable(card);
+            const availablePercent = calculateCardAvailableRatio(card);
             const days = calculateRemainingDays(card.repaymentDate);
             const isPaid = card.status === 'paid';
             const isUrgent = !isPaid && days <= 3;

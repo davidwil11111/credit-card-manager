@@ -23,6 +23,7 @@ const App: React.FC = () => {
   const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
+  const isInitializedRef = useRef(false);
 
   const [isTransactionFormOpen, setIsTransactionFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | undefined>(undefined);
@@ -119,6 +120,7 @@ const App: React.FC = () => {
 
         await loadFromDatabase();
         setIsInitialized(true);
+        isInitializedRef.current = true;
         logger.info('=== App initialization completed ===');
       } catch (error) {
         logger.error('=== Init failed ===');
@@ -131,13 +133,13 @@ const App: React.FC = () => {
     initApp();
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && isInitialized) {
+      if (document.visibilityState === 'visible' && isInitializedRef.current) {
         processBillingLogic();
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [isInitialized]);
+  }, []);
 
   const handleImportData = async (file: File) => {
     const reader = new FileReader();

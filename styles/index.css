@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 确保原生启动 → WebView → React 渲染全程无闪烁 */
+body {
+  background: #1d4ed8;
+}
+
 /* Brand Colors (Overview) */
 :root {
   --brand-primary: #3A7CFE;

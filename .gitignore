@@ -41,3 +41,4 @@ credit_card_manager_*.json
 # Misc
 convert-old-export.js
 design UI/
+.aider*

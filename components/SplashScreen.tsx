@@ -11,6 +11,10 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete, isReady 
   const [subtitleVisible, setSubtitleVisible] = useState(false);
   const minElapsed = useRef(false);
   const completed = useRef(false);
+  const isReadyRef = useRef(isReady);
+
+  // 始终保持 ref 为最新值，避免闭包陷阱
+  isReadyRef.current = isReady;
 
   useEffect(() => {
     const textTimer = setTimeout(() => {
@@ -23,8 +27,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete, isReady 
 
     const minTimer = setTimeout(() => {
       minElapsed.current = true;
-      // If init is already done, dismiss immediately
-      if (isReady && !completed.current) {
+      // 用 ref 读取最新的 isReady，避免闭包取到初始值 false
+      if (isReadyRef.current && !completed.current) {
         dismiss();
       }
     }, 2000);

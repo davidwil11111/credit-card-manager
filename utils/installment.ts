@@ -1,5 +1,5 @@
 import { InstallmentPlan, InstallmentPeriod, Transaction } from '../types';
-import { clampDayToMonth } from '../constants';
+import { clampDayToMonth } from './billing';
 import { toDateString } from './date';
 
 export const VALID_PERIODS = [3, 6, 9, 12, 18, 24, 36];
@@ -29,8 +29,8 @@ export function calculateInstallmentPlan(
   notes?: string
 ): InstallmentPlan {
   if (principal <= 0) throw new Error('分期金额必须大于0');
-  if (annualRate < 0 || annualRate > 0.36) throw new Error('年化利率需在0-36%之间');
-  if (!VALID_PERIODS.includes(totalPeriods)) throw new Error(`分期期数需为 ${VALID_PERIODS.join('/')}`);
+  if (annualRate < 0 || annualRate > 0.36) throw new Error('年化利率需�?-36%之间');
+  if (!VALID_PERIODS.includes(totalPeriods)) throw new Error(`分期期数需�?${VALID_PERIODS.join('/')}`);
 
   const r = annualRate / 12;
   const N = totalPeriods;
@@ -123,11 +123,11 @@ export function calculateEarlySettlement(
     if (period.status === 'paid') continue;
 
     if (dueD > settleD) {
-      // Future period — principal still owed, interest waived
+      // Future period �?principal still owed, interest waived
       remainingPrincipal += period.principal;
       interestReduction += period.interest;
     } else {
-      // Past due — principal not yet paid (shouldn't really happen separately),
+      // Past due �?principal not yet paid (shouldn't really happen separately),
       // interest owed
       remainingPrincipal += period.principal;
       overdueInterest += period.interest;
@@ -149,7 +149,7 @@ export function calculateEarlySettlement(
 export function generateInstallmentTransactions(plan: InstallmentPlan): Transaction[] {
   const txs: Transaction[] = [];
 
-  // Installment start — records the new debt (positive amount = liability increase)
+  // Installment start �?records the new debt (positive amount = liability increase)
   txs.push({
     id: `tx-${Date.now()}-start`,
     date: plan.startDate,
@@ -173,7 +173,7 @@ export function generateInstallmentTransactions(plan: InstallmentPlan): Transact
       merchantType: '账单分期',
       cost: period.interest,
       actualReceipt: period.principal,
-      notes: `分期第${period.period}期/${plan.totalPeriods}期`,
+      notes: `分期�?{period.period}�?${plan.totalPeriods}期`,
     });
   }
 
