@@ -162,7 +162,7 @@ credit-card-manager/
 ├── index.tsx                        # ReactDOM 入口，Capacitor StatusBar 初始化
 ├── store.ts                         # Zustand 全局状态（卡片/交易/POS/分期 CRUD）
 ├── types.ts                         # 所有 TypeScript 类型定义
-├── constants.ts                     # 账单计算引擎、银行主题色、POS 预设、Mock 数据
+├── constants.ts                     # 银行主题色、POS 预设、Mock 数据、re-export 计算函数
 │
 ├── components/
 │   ├── Overview.tsx                 # 🏠 首页 — 卡片列表、全局统计、排序、批量操作
@@ -180,7 +180,15 @@ credit-card-manager/
 │   └── ui/
 │       └── Modal.tsx                # 🧩 通用弹窗 — Confirm/Input/Settings/Backup 等
 │
+├── hooks/
+│   └── useStats.ts                  # 📊 统计数据 Hook — 全局额度/欠款/逾期汇总
+│
+├── services/
+│   └── statsService.ts              # 📐 统计计算服务 — 可用额度、使用率等纯函数
+│
 ├── utils/
+│   ├── billing.ts                   # 📅 账单计算引擎 — 周期、还款日、状态、账单生成
+│   ├── billing.test.ts              # 账单引擎单元测试
 │   ├── database.ts                  # 🗄️ SQLite 数据库 — CRUD、备份、迁移
 │   ├── installment.ts               # 🧮 分期计算 — 等额本息、提前结清
 │   ├── notifications.ts             # 🔔 本地通知 — 还款提醒
@@ -188,9 +196,7 @@ credit-card-manager/
 │   ├── logger.ts                    # 📜 日志系统 — 操作记录与回放
 │   ├── date.ts                      # 🗓️ 日期工具 — 格式化、剩余天数
 │   ├── date.test.ts                 # 日期工具单元测试
-│   ├── currency.ts                  # 💵 金额格式化
-│   ├── installment.test.ts          # 分期计算单元测试
-│   └── constants.test.ts            # 账单引擎单元测试
+│   └── currency.ts                  # 💵 金额格式化
 │
 ├── styles/
 │   └── index.css                    # TailwindCSS 入口 + 全局样式
@@ -215,9 +221,10 @@ credit-card-manager/
 npm test
 
 # 测试覆盖：
-# - constants.test.ts   → 账单周期计算、还款日计算、跨年跨月边界
+# - billing.test.ts     → 账单周期计算、还款日计算、跨年跨月边界
 # - date.test.ts        → 日期格式化、剩余天数
 # - installment.test.ts → 等额本息计算、提前结清、边界校验
+# - statsService.test.ts→ 统计计算（可用额度、使用率）
 ```
 
 ## 📄 License
